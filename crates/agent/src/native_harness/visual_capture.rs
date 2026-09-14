@@ -180,6 +180,7 @@ impl HarnessTools {
     /// unsupported for the bounded comparator.
     pub fn set_reference_images(&mut self, paths: &[PathBuf]) -> AgentResult<()> {
         self.reference_images.clear();
+        self.attached_images.clear();
         let mut total_bytes = 0_usize;
         for path in paths.iter().take(MAX_REFERENCE_IMAGES) {
             let bytes = fs::read(path)?;
@@ -188,10 +189,13 @@ impl HarnessTools {
             {
                 continue;
             }
+            if crate::image_mime_type(&bytes).is_some() {
+                total_bytes += bytes.len();
+                self.attached_images.push((path.clone(), bytes.clone()));
+            }
             if validate_screenshot_png(&bytes).is_ok()
                 && visual_comparison::decode_png(&bytes).is_ok()
             {
-                total_bytes += bytes.len();
                 self.reference_images.push((path.clone(), bytes));
             }
         }
@@ -363,6 +367,7 @@ impl HarnessTools {
             after: None,
             before_bytes: None,
             after_bytes: None,
+            reference_images: Vec::new(),
         };
         self.pending
             .insert(approval.id.clone(), Self::approval_digest(&approval)?);

@@ -73,6 +73,7 @@ impl HarnessTools {
             required_skills: Mutex::new(BTreeSet::new()),
             skill_coverage: Mutex::new(BTreeMap::new()),
             reference_images: Vec::new(),
+            attached_images: Vec::new(),
         })
     }
 

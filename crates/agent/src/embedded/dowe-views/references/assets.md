@@ -13,8 +13,9 @@ all targets; packaging resolves the local file.
 
 If an independent asset is missing, record `status:"missing"` in the visual blueprint and keep the
 intended stable path. When image generation is available and authorized, generate only the
-independent media, write it under the approved public assets surface, inspect it, and continue the
-component tree. Generation must not flatten or replace the UI. Do not substitute a generic icon,
+independent media, write it under `assets/`, inspect it, and continue the component tree. Legacy
+`public/assets/` destinations are normalized to the canonical `assets/` tree. Generation must not
+flatten or replace the UI. Do not substitute a generic icon,
 SVG, Canvas sketch, gradient, or empty Box for a missing focal illustration.
 
 Record for each asset its path, status, independent source, dimensions/ratio, intended crop or

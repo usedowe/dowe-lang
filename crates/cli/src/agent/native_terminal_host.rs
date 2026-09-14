@@ -110,14 +110,20 @@ impl HarnessHost for TerminalHost<'_> {
                 "image generation currently supports only OpenAI",
             ));
         }
-        dowe_agent::send_openai_image_generation(
-            &auth,
-            &selection.model,
-            _approval.call.arguments["prompt"]
-                .as_str()
-                .ok_or_else(|| AgentError::new("generation prompt missing"))?,
-        )
-        .await
+        let prompt = _approval.call.arguments["prompt"]
+            .as_str()
+            .ok_or_else(|| AgentError::new("generation prompt missing"))?;
+        if _approval.reference_images().is_empty() {
+            dowe_agent::send_openai_image_generation(&auth, &selection.model, prompt).await
+        } else {
+            dowe_agent::send_openai_image_edit(
+                &auth,
+                &selection.model,
+                prompt,
+                _approval.reference_images(),
+            )
+            .await
+        }
     }
 
     fn take_request_events(&mut self) -> Vec<Value> {

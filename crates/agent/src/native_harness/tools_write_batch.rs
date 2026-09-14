@@ -224,6 +224,7 @@ impl HarnessTools {
             after: Some(after),
             before_bytes: None,
             after_bytes: None,
+            reference_images: Vec::new(),
         })
     }
 }

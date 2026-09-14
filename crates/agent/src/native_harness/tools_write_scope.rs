@@ -111,11 +111,11 @@ impl HarnessTools {
         if self.permission_mode.is_full_access() {
             return Ok(());
         }
-        if !(skill == "views" || skill.starts_with("views/"))
-            || !relative.starts_with(Path::new("public/assets"))
-        {
+        let project_asset = relative.starts_with(Path::new("assets"))
+            || relative.starts_with(Path::new("public/assets"));
+        if !(skill == "views" || skill.starts_with("views/")) || !project_asset {
             return Err(AgentError::new(
-                "asset purpose is not covered by the selected Dowe skill",
+                "asset purpose is not covered by the selected Dowe skill; project media belongs under assets/",
             ));
         }
         Ok(())

@@ -398,7 +398,7 @@ impl HarnessTools {
                 ));
             }
             if image_generation {
-                tools.push(definition("generate_image", "Generate independent illustrations, photos, textures, or device artwork only; use Dowe components, Icon, Svg, or Brand for logos, controls, and UI-shaped regions. Requires exact approval before writing under public/assets. reference_image_path is unsupported in v1.", json!({"prompt":{"type":"string","minLength":1,"maxLength":4096},"destination":{"type":"string"},"reason":{"type":"string","minLength":1,"maxLength":1024},"reference_image_path":{"type":"string"}}), &["prompt", "destination", "reason"]));
+                tools.push(definition("generate_image", "Generate or edit independent illustrations, photos, textures, or device artwork. Use Dowe components, Icon, Svg, or Brand for logos, controls, and UI-shaped regions. The approved destination is a project asset path under assets/ (legacy public/assets/ paths are normalized). Optional reference_image_path or reference_image_paths values edit existing project images; num_last_images_to_include can reuse up to five recent attached PNG, JPEG, or WebP images. Requires exact approval.", json!({"prompt":{"type":"string","minLength":1,"maxLength":MAX_IMAGE_PROMPT_BYTES},"destination":{"type":"string"},"reason":{"type":"string","minLength":1,"maxLength":1024},"reference_image_path":{"type":"string"},"reference_image_paths":{"type":"array","maxItems":5,"items":{"type":"string"}},"num_last_images_to_include":{"type":"integer","minimum":1,"maximum":5}}), &["prompt", "destination", "reason"]));
             }
         }
         tools

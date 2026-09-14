@@ -342,13 +342,15 @@ crop, slice, rasterization, or recomposition derived from it as a project asset.
 For integrated image generation, keep every screenshot or UI-shaped region in the semantic Dowe tree.
 Use `Icon`, `Svg`, `Brand`, and Dowe components for logos, controls, icons, and UI; use `Image` or
 generated assets only for independent illustrations, photographs, textures, or device artwork. A
-generated image must not flatten the UI tree. `generate_image` is Execute-only, uses OpenAI
-`gpt-image-1` v1, requires approval, writes bounded output under approved `public/assets`, and
-returns the image to the agent. Configure it with `/models image_generation inherit` or an explicit
-`/models image_generation provider/model`. The `images` vision-input capability is distinct from
-`image_generation`. v1 has no remote URL outputs or reference-image generation and rejects
-`reference_image_path`. Python, Node, and Playwright are not runtime requirements; account and
-billing availability remain provider-side.
+generated image must not flatten the UI tree. `generate_image` is Execute-only, uses the configured
+OpenAI GPT Image model, requires approval, writes bounded output under the project `assets/` tree,
+and returns the image to the agent for continuation and inspection. Legacy `public/assets/`
+destinations are normalized to `assets/`. It can also edit up to five existing project-local PNG,
+JPEG, or WebP references through `reference_image_path` or `reference_image_paths`, or reuse up to
+five recent attached images with `num_last_images_to_include`. Configure it with `/models
+image_generation inherit` or an explicit `/models image_generation provider/model`.
+The `images` vision-input capability is distinct from `image_generation`. Python, Node, and
+Playwright are not runtime requirements; account and billing availability remain provider-side.
 
 Screenshot capture is only bounded validation evidence: it needs an already-running loopback HTTP URL
 and installed browser, writes under `.dowe/visual-qa`, validates PNG signature/IHDR and dimensions,

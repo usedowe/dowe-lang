@@ -1,3 +1,18 @@
+fn canonical_asset_destination(value: &str) -> AgentResult<String> {
+    if value == "public/assets" {
+        return Ok("assets".to_string());
+    }
+    if let Some(relative) = value.strip_prefix("public/assets/") {
+        if relative.is_empty() {
+            return Err(AgentError::new(
+                "generated image destination must name a file",
+            ));
+        }
+        return Ok(format!("assets/{relative}"));
+    }
+    Ok(value.to_string())
+}
+
 impl HarnessTools {
     pub fn prepare(&mut self, call: &ToolCall, role: HarnessRole) -> AgentResult<Option<Approval>> {
         if matches!(
@@ -23,7 +38,7 @@ impl HarnessTools {
                 }
                 let args: GenerateImageArgs = serde_json::from_value(call.arguments.clone())?;
                 if args.prompt.trim().is_empty()
-                    || args.prompt.len() > 4096
+                    || args.prompt.len() > MAX_IMAGE_PROMPT_BYTES
                     || args.reason.trim().is_empty()
                     || args.reason.len() > 1024
                 {
@@ -31,12 +46,8 @@ impl HarnessTools {
                         "generate_image prompt/reason exceeds limits",
                     ));
                 }
-                if args.reference_image_path.is_some() {
-                    return Err(AgentError::new(
-                        "generate_image reference_image_path is not supported in v1",
-                    ));
-                }
-                let resolved = self.path(&args.destination)?;
+                let destination = canonical_asset_destination(&args.destination)?;
+                let resolved = self.path(&destination)?;
                 self.enforce_edit_scope(&resolved)?;
                 self.asset_scope(&resolved, "views/generated")?;
                 let before_bytes = resolved.exists().then(|| fs::read(&resolved)).transpose()?;
@@ -48,16 +59,35 @@ impl HarnessTools {
                         "generate_image destination base exceeds 8 MiB",
                     ));
                 }
-                let details = json!({"prompt":args.prompt,"destination":args.destination,"reason":args.reason,"reference_image_path":args.reference_image_path,"before_byte_count":before_bytes.as_ref().map(Vec::len),"before_sha256":before_bytes.as_ref().map(|value| digest(value)),"path_fingerprint":digest(resolved.as_os_str().as_encoded_bytes()),"approval":"provider bytes remain in memory until this exact approval is accepted"});
+                let reference_images = self.read_reference_images(&args)?;
+                let reference_details = reference_images
+                    .iter()
+                    .enumerate()
+                    .map(|(index, (path, bytes))| {
+                        let label = path
+                            .strip_prefix(&self.root)
+                            .map(|value| value.to_string_lossy().into_owned())
+                            .unwrap_or_else(|_| format!("attached_reference_{index}"));
+                        json!({
+                            "path": label,
+                            "byte_count": bytes.len(),
+                            "sha256": digest(bytes)
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                let mut public_call = call.clone();
+                public_call.arguments["destination"] = json!(destination);
+                let details = json!({"prompt":args.prompt,"destination":public_call.arguments["destination"],"requested_destination":args.destination,"reason":args.reason,"reference_images":reference_details,"before_byte_count":before_bytes.as_ref().map(Vec::len),"before_sha256":before_bytes.as_ref().map(|value| digest(value)),"path_fingerprint":digest(resolved.as_os_str().as_encoded_bytes()),"approval":"provider bytes remain in memory until this exact approval is accepted"});
                 let approval = Approval {
                     id: identifier(),
                     session: self.session.clone(),
-                    call: call.clone(),
+                    call: public_call,
                     details,
                     before: None,
                     after: None,
                     before_bytes,
                     after_bytes: None,
+                    reference_images,
                 };
                 self.pending
                     .insert(approval.id.clone(), Self::approval_digest(&approval)?);
@@ -104,6 +134,7 @@ impl HarnessTools {
                     after: None,
                     before_bytes,
                     after_bytes: Some(bytes),
+                    reference_images: Vec::new(),
                 };
                 self.pending
                     .insert(approval.id.clone(), Self::approval_digest(&approval)?);
@@ -198,6 +229,7 @@ impl HarnessTools {
             after,
             before_bytes: None,
             after_bytes: None,
+            reference_images: Vec::new(),
         };
         self.pending
             .insert(approval.id.clone(), Self::approval_digest(&approval)?);
@@ -224,6 +256,73 @@ impl HarnessTools {
             return Err(AgentError::new("approval fields changed"));
         }
         Ok(())
+    }
+
+    fn read_reference_images(
+        &self,
+        args: &GenerateImageArgs,
+    ) -> AgentResult<Vec<(PathBuf, Vec<u8>)>> {
+        let mut paths = args.reference_image_paths.clone().unwrap_or_default();
+        if let Some(path) = &args.reference_image_path {
+            paths.push(path.clone());
+        }
+        if args.num_last_images_to_include.is_some() && !paths.is_empty() {
+            return Err(AgentError::new(
+                "provide only one of project reference paths or num_last_images_to_include",
+            ));
+        }
+        if let Some(count) = args.num_last_images_to_include {
+            if !(1..=5).contains(&count) {
+                return Err(AgentError::new(
+                    "num_last_images_to_include must be between one and five",
+                ));
+            }
+            if self.attached_images.len() < count {
+                return Err(AgentError::new(format!(
+                    "requested the last {count} conversation images, but only {} are available",
+                    self.attached_images.len()
+                )));
+            }
+            let mut images = self
+                .attached_images
+                .iter()
+                .rev()
+                .take(count)
+                .cloned()
+                .collect::<Vec<_>>();
+            images.reverse();
+            return Ok(images);
+        }
+        let mut seen = BTreeSet::new();
+        paths.retain(|path| seen.insert(path.clone()));
+        if paths.len() > 5 {
+            return Err(AgentError::new(
+                "generate_image accepts at most five reference images",
+            ));
+        }
+        paths
+            .into_iter()
+            .map(|value| {
+                let path = self.path(&value)?;
+                self.enforce_edit_scope(&path)?;
+                self.asset_scope(&path, "views/assets")?;
+                let bytes = fs::read(&path)
+                    .map_err(|error| AgentError::at_path(&path, error.to_string()))?;
+                if bytes.is_empty() || bytes.len() > 8 * 1024 * 1024 {
+                    return Err(AgentError::at_path(
+                        &path,
+                        "reference image is empty or exceeds 8 MiB",
+                    ));
+                }
+                if crate::image_mime_type(&bytes).is_none() {
+                    return Err(AgentError::at_path(
+                        &path,
+                        "reference image must be PNG, JPEG, or WebP",
+                    ));
+                }
+                Ok((path, bytes))
+            })
+            .collect()
     }
 
     pub fn reject(&mut self, approval: Approval) -> AgentResult<()> {
@@ -330,5 +429,4 @@ impl HarnessTools {
             json!({"status":"applied","path":approval.call.arguments["path"],"hash":digest(after.as_bytes())}),
         )
     }
-
 }

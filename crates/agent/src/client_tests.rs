@@ -60,7 +60,31 @@ mod tests {
         assert!(parse_openai_image_response(&json!({"data":[]}), "gpt-image-1", "prompt").is_err());
         let request = build_openai_image_request("gpt-image-1", "prompt").unwrap();
         assert_eq!(request["n"], 1);
-        assert_eq!(request["response_format"], "b64_json");
+        assert_eq!(request["background"], "auto");
+        assert_eq!(request["quality"], "auto");
+        assert_eq!(request["size"], "auto");
+        assert!(request.get("response_format").is_none());
+        assert!(build_openai_image_request("openai/gpt-image-2", "prompt").is_ok());
+        assert!(build_openai_image_request("openai/gpt-5.5", "prompt").is_err());
+    }
+
+    #[test]
+    fn openai_image_errors_keep_provider_diagnostics_without_credentials() {
+        let error = openai_image_error(
+            StatusCode::BAD_REQUEST,
+            Some("req-image-1"),
+            &json!({
+                "error": {
+                    "message": "prompt is invalid",
+                    "code": "invalid_prompt"
+                }
+            }),
+        )
+        .to_string();
+        assert!(error.contains("400 Bad Request"));
+        assert!(error.contains("invalid_prompt"));
+        assert!(error.contains("req-image-1"));
+        assert!(!error.contains("test-secret"));
     }
 
     #[test]

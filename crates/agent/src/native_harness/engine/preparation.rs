@@ -94,6 +94,9 @@ async fn prepare_harness_turn(
         }
     };
     let image_selection = config.resolve(HarnessRole::ImageGeneration, None, active)?;
+    if role == HarnessRole::Execute && config.roles.contains_key(&HarnessRole::ImageGeneration) {
+        config.require_image_generation_capability(&image_selection, HarnessRole::Execute)?;
+    }
     let historical_images = role == HarnessRole::Execute && session.turns.iter().skip(session.context_start).any(|turn| {
         turn.message.as_ref().is_some_and(|message| matches!(&message.content, AgentMessageContent::Parts(parts) if parts.iter().any(|part| matches!(part, crate::AgentMessagePart::ImageUrl { .. }))))
     });

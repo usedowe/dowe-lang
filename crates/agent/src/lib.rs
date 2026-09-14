@@ -31,9 +31,10 @@ pub use authoring::{
 };
 pub use catalog::{AgentCatalogModel, models_with_local_overrides};
 pub use client::{
-    GeneratedImage, NativeRequestEvent, build_openai_image_request, parse_openai_image_response,
+    GeneratedImage, MAX_IMAGE_PROMPT_BYTES, NativeRequestEvent, build_openai_image_request,
+    image_mime_type, is_openai_image_model, openai_image_models, parse_openai_image_response,
     send_agent_request, send_native_agent_request, send_native_agent_request_observed,
-    send_native_agent_request_with_registry, send_openai_image_generation,
+    send_native_agent_request_with_registry, send_openai_image_edit, send_openai_image_generation,
 };
 pub use context::{
     AgentCodeGraphNodeSummary, AgentCodeGraphSummary, summarize_codegraph, summarize_codegraph_for,

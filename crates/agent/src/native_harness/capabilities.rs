@@ -16,7 +16,7 @@ pub fn builtin_model_capabilities(provider: &str, model: &str) -> Option<ModelCa
 }
 
 pub fn builtin_image_generation_capability(provider: &str, model: &str) -> bool {
-    provider == "openai" && crate::normalize_model_id(provider, model) == "gpt-image-1"
+    provider == "openai" && crate::is_openai_image_model(model)
 }
 
 impl HarnessConfig {
@@ -32,7 +32,7 @@ impl HarnessConfig {
         }
         if !builtin_image_generation_capability(&selection.provider, &selection.model) {
             return Err(AgentError::new(format!(
-                "image generation capability is unknown or unsupported for {}/{}; select openai/gpt-image-1",
+                "image generation capability is unknown or unsupported for {}/{}; select a supported openai/gpt-image-* model",
                 selection.provider, selection.model
             )));
         }
@@ -81,6 +81,14 @@ mod tests {
         assert!(
             config
                 .require_image_generation_capability(&generator, HarnessRole::Execute)
+                .is_ok()
+        );
+        assert!(
+            config
+                .require_image_generation_capability(
+                    &ModelSelection::new("openai", "gpt-image-2"),
+                    HarnessRole::Execute
+                )
                 .is_ok()
         );
         let vision = ModelSelection::new("openai", "gpt-5.5");

@@ -76,6 +76,16 @@ pub fn models_with_local_overrides(provider: &str) -> AgentResult<Vec<AgentCatal
             name: model.name.to_string(),
         })
         .collect::<Vec<_>>();
+    if provider == "openai" {
+        result.extend(
+            crate::openai_image_models()
+                .iter()
+                .map(|(id, name)| AgentCatalogModel {
+                    id: (*id).to_string(),
+                    name: (*name).to_string(),
+                }),
+        );
+    }
     let path = default_auth_path()?.with_file_name("models.json");
     if !path.is_file() {
         return Ok(result);

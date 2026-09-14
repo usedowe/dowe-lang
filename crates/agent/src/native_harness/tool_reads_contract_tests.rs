@@ -34,7 +34,7 @@ mod image_generation_contract_tests {
     use super::*;
 
     #[test]
-    fn schema_does_not_advertise_overwrite_and_reference_rejection_is_explicit() {
+    fn schema_supports_project_asset_references_and_legacy_destinations() {
         let definition =
             HarnessTools::definitions_for_capabilities(HarnessRole::Execute, false, true)
                 .into_iter()
@@ -43,36 +43,60 @@ mod image_generation_contract_tests {
         let properties = &definition.function.parameters["properties"];
         assert!(properties.get("overwrite").is_none());
         assert!(properties.get("reference_image_path").is_some());
-        assert!(
-            definition
-                .function
-                .description
-                .contains("reference_image_path is unsupported in v1")
-        );
+        assert!(properties.get("reference_image_paths").is_some());
+        assert!(definition.function.description.contains("assets/"));
 
         let root = tempfile::tempdir().expect("temporary project root");
+        fs::create_dir_all(root.path().join("assets")).expect("assets directory");
+        fs::write(
+            root.path().join("assets/reference.png"),
+            b"\x89PNG\r\n\x1a\nreference",
+        )
+        .expect("reference image");
         let mut tools = HarnessTools::new(root.path(), "image-contract", HarnessConfig::default())
             .expect("harness tools");
-        let error = tools
+        let approval = tools
             .prepare(
                 &ToolCall::new(
                     "reference",
                     "generate_image",
                     json!({
                         "prompt": "a textured background",
-                        "destination": "assets/background.png",
-                        "reason": "test unsupported reference",
+                        "destination": "public/assets/background.png",
+                        "reason": "test reference edit",
                         "reference_image_path": "assets/reference.png"
                     }),
                 ),
                 HarnessRole::Execute,
             )
-            .expect_err("reference images must remain rejected");
-        assert!(
-            error
-                .to_string()
-                .contains("reference_image_path is not supported")
+            .expect("reference image approval")
+            .expect("approval should be present");
+        assert_eq!(
+            approval.call.arguments["destination"],
+            "assets/background.png"
         );
+        assert_eq!(approval.reference_images().len(), 1);
+
+        tools
+            .set_reference_images(&[root.path().join("assets/reference.png")])
+            .expect("attached reference image");
+        let attached_approval = tools
+            .prepare(
+                &ToolCall::new(
+                    "attached-reference",
+                    "generate_image",
+                    json!({
+                        "prompt": "turn the attached image into a darker texture",
+                        "destination": "assets/dark.png",
+                        "reason": "test attached image edit",
+                        "num_last_images_to_include": 1
+                    }),
+                ),
+                HarnessRole::Execute,
+            )
+            .expect("attached reference approval")
+            .expect("attached approval should be present");
+        assert_eq!(attached_approval.reference_images().len(), 1);
     }
 }
 

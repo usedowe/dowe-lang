@@ -4,7 +4,10 @@ use super::{
     skill_unit,
 };
 use crate::instructions::MAX_INSTRUCTION_FILE_BYTES;
-use crate::{AgentError, AgentResult, AgentToolDefinition, AgentToolFunction, GeneratedImage};
+use crate::{
+    AgentError, AgentResult, AgentToolDefinition, AgentToolFunction, GeneratedImage,
+    MAX_IMAGE_PROMPT_BYTES,
+};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use dowe_agent_harness::AllowedEditSurface;
@@ -29,6 +32,14 @@ pub struct Approval {
     pub(crate) before_bytes: Option<Vec<u8>>,
     #[serde(skip)]
     pub(crate) after_bytes: Option<Vec<u8>>,
+    #[serde(skip)]
+    pub(crate) reference_images: Vec<(PathBuf, Vec<u8>)>,
+}
+
+impl Approval {
+    pub fn reference_images(&self) -> &[(PathBuf, Vec<u8>)] {
+        &self.reference_images
+    }
 }
 
 pub struct HarnessTools {
@@ -43,6 +54,7 @@ pub struct HarnessTools {
     required_skills: Mutex<BTreeSet<String>>,
     skill_coverage: Mutex<BTreeMap<String, SkillCoverage>>,
     pub(crate) reference_images: Vec<(PathBuf, Vec<u8>)>,
+    pub(crate) attached_images: Vec<(PathBuf, Vec<u8>)>,
     pub redactor: Redactor,
 }
 
@@ -79,6 +91,10 @@ struct GenerateImageArgs {
     reason: String,
     #[serde(default)]
     reference_image_path: Option<String>,
+    #[serde(default)]
+    reference_image_paths: Option<Vec<String>>,
+    #[serde(default)]
+    num_last_images_to_include: Option<usize>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
