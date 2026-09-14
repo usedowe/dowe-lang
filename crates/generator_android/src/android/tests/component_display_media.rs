@@ -326,6 +326,9 @@ fn generates_compose_and_dev_media_display_form_components() {
         dev.content
             .contains("setContentDescription(\"Previous slide\")")
     );
+    assert!(dev.content.contains(
+        "setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize(22f));"
+    ));
     assert!(
         dev.content
             .contains("setContentDescription(\"Next slide\")")

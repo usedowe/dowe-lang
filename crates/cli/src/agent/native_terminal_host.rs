@@ -14,10 +14,11 @@ struct TerminalHost<'a> {
 impl TerminalHost<'_> {
     fn queue_response(&mut self, event: &Value) {
         if let Some(text) = event["text"].as_str() {
-            self.pending_responses.push(super::markdown::render_markdown(
-                text,
-                crate::menus::is_interactive_terminal(),
-            ));
+            self.pending_responses
+                .push(super::markdown::render_markdown(
+                    text,
+                    crate::menus::is_interactive_terminal(),
+                ));
         }
     }
 
@@ -274,13 +275,21 @@ impl HarnessHost for TerminalHost<'_> {
             Some("memory_candidate_error") => {
                 eprintln!("Memory extraction was deferred; inspect /session.")
             }
-            Some("budget_exhausted") => eprintln!(
-                "The agent paused this run to protect the context. Your work is preserved; send a focused follow-up to continue."
-            ),
-            Some("validation_started") => eprintln!("Validating the Dowe project before completing the task…"),
-            Some("validation_finished")
-                if event["result"]["status"].as_str() == Some("failed") =>
-            {
+            Some("budget_exhausted") => match event["reason"].as_str() {
+                Some("estimated_next_request") => eprintln!(
+                    "The agent bounded or compacted its context but reached the request safety limit. Your work is preserved; send a focused follow-up to continue."
+                ),
+                Some("tool_rounds") => eprintln!(
+                    "The agent reached the tool-round safety limit. Your work is preserved; send a focused follow-up to continue."
+                ),
+                _ => eprintln!(
+                    "The agent reached a task safety limit. Your work is preserved; send a focused follow-up to continue."
+                ),
+            },
+            Some("validation_started") => {
+                eprintln!("Validating the Dowe project before completing the task…")
+            }
+            Some("validation_finished") if event["result"]["status"].as_str() == Some("failed") => {
                 eprintln!(
                     "Dowe validation failed: {}",
                     activity::validation_failure_detail(event)

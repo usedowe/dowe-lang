@@ -97,6 +97,8 @@ fn dev_activity_responsive_helpers() -> &'static str {
         return value == null ? "__DOWE_DEFAULT_FONT__" : value;
     }
 
+    private static final float DOWE_ANDROID_TEXT_SCALE = 1.15f;
+
     private int doweDp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
@@ -210,6 +212,10 @@ fn dev_activity_responsive_helpers() -> &'static str {
 
     private float doweTextSize(Float value, float fallback) {
         return value == null ? fallback : value;
+    }
+
+    private float doweNativeTextSize(float value) {
+        return value * DOWE_ANDROID_TEXT_SCALE;
     }
 
     private float doweFloat(Float value, float fallback) {

@@ -125,7 +125,7 @@ fn dev_activity_candlestick_runtime() -> &'static str {
             if (candles.isEmpty()) {
                 paint.setColor(doweAlpha(contentColor, 0.64f));
                 paint.setTextAlign(Paint.Align.CENTER);
-                paint.setTextSize(13f * getResources().getDisplayMetrics().scaledDensity);
+                paint.setTextSize(doweNativeTextSize(13f) * getResources().getDisplayMetrics().density);
                 canvas.drawText(emptyLabel, getWidth() / 2f, getHeight() / 2f, paint);
                 return;
             }

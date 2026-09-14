@@ -93,6 +93,8 @@ pub(super) fn request_turns(turns: &[HarnessTurn], scope: &str) -> AgentResult<V
     Ok(Value::Array(output))
 }
 
+include!("continuation_history.rs");
+
 #[cfg(test)]
 mod tests {
     use super::*;

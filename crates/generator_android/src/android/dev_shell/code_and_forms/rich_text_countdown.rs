@@ -46,7 +46,7 @@ fn dev_activity_code_and_forms_rich_text_countdown() -> &'static str {
         FrameLayout.LayoutParams inputParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
         view.addView(input, inputParams);
         TextView labelView = doweControlLabel(label, color, font);
-        labelView.setTextSize(12f);
+        labelView.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize(12f));
         FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
         labelParams.leftMargin = doweDp(12);
         labelParams.rightMargin = doweDp(12);

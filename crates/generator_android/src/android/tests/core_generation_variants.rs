@@ -211,6 +211,9 @@ fn generates_java_runtime_variant_metadata_and_refresh() {
     assert!(generated.contains("DOWE_VARIANT_TAG") || generated.contains("doweApplyReactiveVariant"));
     assert!(generated.contains("doweApplyReactiveVariant(view)"));
     assert!(generated.contains("doweButtonContent(variant, scheme)"));
+    assert!(generated.contains(
+        "setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize(\"xs\".equals(size)"
+    ));
 }
 
 #[test]
@@ -404,4 +407,3 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
         "doweRound({field}, doweResponsiveFloat(viewportWidth, 12f, null, null, null, null));"
     )));
 }
-

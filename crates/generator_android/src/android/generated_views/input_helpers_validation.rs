@@ -128,6 +128,8 @@ private fun <T> doweResponsive(viewportWidth: Dp, xs: T? = null, sm: T? = null, 
     return value
 }
 
+private const val DOWE_ANDROID_TEXT_SCALE = 1.15f
+
 private fun doweTextSize(viewportWidth: Dp, min: Float, preferredBase: Float, preferredViewport: Float, max: Float): TextUnit {
     return (preferredBase + viewportWidth.value * preferredViewport / 100f).coerceIn(min, max).sp
 }
@@ -289,4 +291,3 @@ private fun doweHorizontalArrangement(value: DoweJustify?, gap: Dp?): Arrangemen
 private fun doweVerticalArrangement(value: DoweJustify?, gap: Dp?): Arrangement.Vertical =
     when (value) {
 "#
-

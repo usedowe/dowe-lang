@@ -15,6 +15,11 @@ pub(crate) const DOWE_SYNTAX_CONTRACT: &str = r#"Dowe Source Format pre-write co
   frontend modules belong under `views/`, backend modules under `server/`.
 - View declarations use `views`, `group`, `route`, `layout`, `page`, and `component` with their
   documented children. A page starts with `Section`; a layout owns one `Scaffold` shell.
+- Cross-file names are exact: an imported local must match the exported declaration it loads, and
+  every related import/export change must be submitted in the same coherent batch. Never leave
+  `main.dowe` importing `viewRoutes` while the route module exports `siteRoutes`.
+- `scheme` is a component-specific enum, not a free-form color name. Read the component catalog
+  and use only the values it lists; never guess a theme family or invent a prop value.
 - Static visible copy is a quoted child (`"Hello"`). Dynamic visible copy is one quoted binding
   (`"{item.title}"`), never an unquoted binding or an unbraced literal. Prop bindings stay bare:
   `show:ready`, `bind:form.title`, `onClick:save`, `Icon name:item.icon`.
@@ -25,7 +30,8 @@ pub(crate) const DOWE_SYNTAX_CONTRACT: &str = r#"Dowe Source Format pre-write co
 
 pub(crate) const DOWE_VIEW_DEFAULTS_CONTRACT: &str = r#"Dowe reference-UI contract (mandatory):
 The component design defaults are the visual baseline.
-- Before the first write, call `get_skill` for `theme`, `views`, `views/layouts`, `views/pages`,
+- Before the first write, read `main.dowe` and the affected route module plus its imported layout,
+  page, and component sources. Call `get_skill` for `theme`, `views`, `views/layouts`, `views/pages`,
   `views/components`, `views/catalog`, and the relevant `views/svg` unit. Read the focused reference before choosing
   components; use `get_skill` with `id:"views" resource:"references/reference-ui.md"` for a
   declared Views reference; compiler diagnostics remain authoritative.
@@ -50,6 +56,10 @@ The component design defaults are the visual baseline.
   `danger`) or lower-camel custom names. Put `color`, `text`, and `title` on that one family row;
   never invent capitalized rows such as `Primary` or `Secondary`, `soft*` families, or flat role
   declarations. A page-only reference task must preserve the existing theme and must not rewrite it.
+- A component `scheme` must be one of that component's catalog values (`primary`, `secondary`,
+  `accent`, `muted`, `success`, `info`, `warning`, or `danger` for the standard variant controls).
+  `background` and `surface` are theme families for components that explicitly support them, not
+  universal `scheme` values. Omit `scheme` when the component default is sufficient.
 - Never write `color` on `Text` or `Title` in any generated Dowe source, including
   `color:"muted"` or `color:"primary"`; inherit foreground from the nearest scheme-owning parent.
   In reference UI source, do not write `Text size:"xs"`, `Text weight`, `Title weight`, or a

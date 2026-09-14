@@ -53,6 +53,8 @@ fn generated_views(
     if routes.first().is_some() {
         output.push_str(
             r#"    val context = LocalContext.current
+    val systemDensity = LocalDensity.current
+    val doweDensity = Density(systemDensity.density, fontScale = DOWE_ANDROID_TEXT_SCALE)
     val pageMotionEnabled = dowePageMotionEnabled(context)
     val initialPath = if (DoweRoutes.paths.contains(startPath)) startPath else DoweRoutes.initialPath
     val initialFragment = startFragment?.takeIf { DoweRoutes.sections[initialPath]?.contains(it) == true }
@@ -152,6 +154,7 @@ fn generated_views(
         output.push_str(
             r#"            )
         } else {
+            CompositionLocalProvider(LocalDensity provides doweDensity) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopStart) {
                 val viewportWidth = maxWidth
                 CompositionLocalProvider(LocalDowePageEntranceSuppressed provides pageEntranceSuppressed) {
@@ -173,7 +176,7 @@ fn generated_views(
                 }
 "#,
         );
-        output.push_str("            }\n        }\n        }\n    }\n");
+        output.push_str("            }\n        }\n        }\n        }\n    }\n");
     } else {
         output.push_str("    Column {\n    }\n");
     }

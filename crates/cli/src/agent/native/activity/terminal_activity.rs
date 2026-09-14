@@ -214,7 +214,12 @@ impl Activity {
             }
             Some("budget_exhausted") => {
                 state.task_status = "blocked".into();
-                state.activity_detail = "Context limit reached".into();
+                state.activity_detail = match event["reason"].as_str() {
+                    Some("tool_rounds") => "Tool-round safety limit reached",
+                    Some("estimated_next_request") => "Request safety limit reached",
+                    _ => "Task safety limit reached",
+                }
+                .into();
                 ActivityPhase::Failed
             }
             _ => return,

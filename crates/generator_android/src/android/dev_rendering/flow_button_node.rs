@@ -242,10 +242,10 @@ fn render_dev_android_button_flow_node(
                 return true;
             }
             output.push_str(&format!(
-                            "        Button {view} = new Button(this);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {view}.setText({});\n        {view}.setTextIsSelectable(false);\n        {view}.setAllCaps(false);\n        {view}.setTypeface(Typeface.create({}, android.graphics.Typeface.NORMAL));\n        {view}.setTextSize({});\n        {view}.setIncludeFontPadding(false);\n        {view}.setGravity(Gravity.CENTER);\n        {view}.setMinWidth(0);\n        {view}.setMinimumWidth(0);\n        {view}.setMinHeight(0);\n        {view}.setMinimumHeight(0);\n        {view}.setTextColor({});\n        {view}.setBackgroundTintList(null);\n        {view}.setBackground(doweInputBackground({}, {}, {}));\n",
+                            "        Button {view} = new Button(this);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {view}.setText({});\n        {view}.setTextIsSelectable(false);\n        {view}.setAllCaps(false);\n        {view}.setTypeface(Typeface.create({}, android.graphics.Typeface.NORMAL));\n        {view}.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, {});\n        {view}.setIncludeFontPadding(false);\n        {view}.setGravity(Gravity.CENTER);\n        {view}.setMinWidth(0);\n        {view}.setMinimumWidth(0);\n        {view}.setMinHeight(0);\n        {view}.setMinimumHeight(0);\n        {view}.setTextColor({});\n        {view}.setBackgroundTintList(null);\n        {view}.setBackground(doweInputBackground({}, {}, {}));\n",
                             text,
                             dev_font_value(props.style.font.as_ref().or(inherited_font)),
-                            dev_text_size_expr(false, INPUT_TEXT_SIZE),
+                            dev_native_text_size_expr(false, INPUT_TEXT_SIZE),
                             content,
                             container,
                             border,

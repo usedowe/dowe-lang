@@ -340,7 +340,7 @@ fn generates_compose_advanced_form_components() {
     );
     assert!(
         dev.content
-            .contains("setTextSize(doweFluidTextSize(14f, 13.12f, 0.25f, 16f))")
+            .contains("setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize(doweFluidTextSize(14f, 13.12f, 0.25f, 16f)))")
     );
     assert!(
         views
@@ -463,4 +463,3 @@ fn slider_signal_route() -> ViewRoute {
         navigation_actions: Vec::new(),
     }
 }
-

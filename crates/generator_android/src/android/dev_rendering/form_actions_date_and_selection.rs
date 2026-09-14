@@ -19,7 +19,7 @@ fn render_dev_android_form_actions_date(
                 || props.error_text.is_some();
             let control_height = form_control_min_height(props.size, props.style.label_floating)
                 .native_units();
-            let text_size = dev_text_size_expr(false, form_control_text_size(props.size));
+            let text_size = dev_native_text_size_expr(false, form_control_text_size(props.size));
             let value = dev_bound_text(
                 &props.style,
                 props.value.as_deref().unwrap_or_default(),
@@ -56,7 +56,7 @@ fn render_dev_android_form_actions_date(
                                         ));
             }
             output.push_str(&format!(
-                                        "        final String[] {field}Selected = new String[]{{{value}}};\n        TextView {field} = doweDateTrigger(\"{}\", {}, {});\n        {field}.setTextSize({});\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), 0, doweDp(36), 0);\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        doweAdd({view}, {field}, 4, false);\n        doweBindDate({field}, {field}Selected, \"{}\", {}, {}, {}, null, false, {}, {});\n",
+                                        "        final String[] {field}Selected = new String[]{{{value}}};\n        TextView {field} = doweDateTrigger(\"{}\", {}, {});\n        {field}.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, {});\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), 0, doweDp(36), 0);\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        doweAdd({view}, {field}, 4, false);\n        doweBindDate({field}, {field}Selected, \"{}\", {}, {}, {}, null, false, {}, {});\n",
                                         escape_java(placeholder),
                                         dev_variant_content(&props.style),
                                         dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
@@ -103,7 +103,7 @@ fn render_dev_android_form_actions_date_range(
             let field = next_dev_view(counter);
             let control_height = form_control_min_height(props.size, props.style.label_floating)
                 .native_units();
-            let text_size = dev_text_size_expr(false, form_control_text_size(props.size));
+            let text_size = dev_native_text_size_expr(false, form_control_text_size(props.size));
             let start = dev_optional_bound_text(
                 props.start.as_deref(),
                 props.start_value.as_deref().unwrap_or_default(),
@@ -152,7 +152,7 @@ fn render_dev_android_form_actions_date_range(
                                         ));
             }
             output.push_str(&format!(
-                                        "        final String[] {field}Selected = new String[]{{{start}, {end}}};\n        TextView {field} = doweDateTrigger(\"{}\", {}, {});\n        {field}.setTextSize({});\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), 0, doweDp(36), 0);\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        doweAdd({view}, {field}, 4, false);\n        doweBindDate({field}, {field}Selected, \"{}\", {}, {}, {}, {}, true, {}, {});\n",
+                                        "        final String[] {field}Selected = new String[]{{{start}, {end}}};\n        TextView {field} = doweDateTrigger(\"{}\", {}, {});\n        {field}.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, {});\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), 0, doweDp(36), 0);\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        doweAdd({view}, {field}, 4, false);\n        doweBindDate({field}, {field}Selected, \"{}\", {}, {}, {}, {}, true, {}, {});\n",
                                         escape_java(placeholder),
                                         dev_variant_content(&props.style),
                                         dev_font_value(props.style.style.font.as_ref().or(inherited_font)),

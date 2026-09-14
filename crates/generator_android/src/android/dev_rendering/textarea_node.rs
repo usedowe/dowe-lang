@@ -28,7 +28,7 @@ fn render_dev_android_textarea(
     let content = dev_variant_content(&props.style);
     let placeholder = props.style.placeholder.as_deref().unwrap_or_default();
     let read_only = props.readonly || props.disabled;
-    let text_size = dev_text_size_expr(
+    let text_size = dev_native_text_size_expr(
         false,
         form_control_text_size(props.style.size.unwrap_or(ButtonSize::Md)),
     );
@@ -47,7 +47,7 @@ fn render_dev_android_textarea(
         ));
     }
     output.push_str(&format!(
-        "        EditText {field} = new EditText(this);\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setTextSize({});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.TOP | Gravity.START);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(false);\n        {field}.setMinLines({});\n        {field}.setMaxLines({});\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), doweDp({}), doweDp(12), doweDp(12));\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n",
+        "        EditText {field} = new EditText(this);\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, {});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.TOP | Gravity.START);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(false);\n        {field}.setMinLines({});\n        {field}.setMaxLines({});\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), doweDp({}), doweDp(12), doweDp(12));\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n",
         text_size,
         props.rows,
         props.rows,

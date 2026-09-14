@@ -30,7 +30,7 @@ fn render_dev_android_input(
             let control_size = props.size.unwrap_or(ButtonSize::Md);
             let control_height =
                 form_control_min_height(control_size, props.label_floating).native_units();
-            let text_size = dev_text_size_expr(false, form_control_text_size(control_size));
+            let text_size = dev_native_text_size_expr(false, form_control_text_size(control_size));
             let has_icons = props.icon_start.is_some() || props.icon_end.is_some();
             let field = if props.label.is_some() || has_icons {
                 next_dev_view(counter)
@@ -77,7 +77,7 @@ fn render_dev_android_input(
                                         ));
             }
             output.push_str(&format!(
-                                        "        EditText {field} = new EditText(this);\n        {field}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setTextSize({});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(true);\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), {}, doweDp({}), 0);\n        {field}.{field_background};\n",
+                                        "        EditText {field} = new EditText(this);\n        {field}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, {});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(true);\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), {}, doweDp({}), 0);\n        {field}.{field_background};\n",
                                         text_size,
                                         control_height,
                                         control_height,

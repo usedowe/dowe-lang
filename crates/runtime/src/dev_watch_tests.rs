@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use super::{HOT_RELOAD_COMPLETED_MESSAGE, handle_watch_changes, run_watch_loop};
+    use super::{
+        HOT_RELOAD_COMPLETED_MESSAGE, handle_watch_changes, run_watch_loop,
+        wait_for_agent_write_batch,
+    };
     use crate::dev_native_builds::NativeBuildCoordinator;
     use crate::watch::SourceWatcher;
     use crate::{
@@ -14,6 +17,27 @@ mod tests {
     use tempfile::TempDir;
     use tokio::sync::{RwLock, broadcast, oneshot};
     use tokio::time::timeout;
+
+    #[tokio::test]
+    async fn watcher_waits_for_an_active_agent_write_batch() {
+        let temp = TempDir::new().expect("tempdir");
+        let lock_path = temp.path().join(".dowe-agent-write.lock");
+        let lock = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(lock_path)
+            .expect("agent lock");
+        lock.try_lock().expect("hold agent lock");
+
+        let wait_root = temp.path().to_path_buf();
+        let wait = tokio::spawn(wait_for_agent_write_batch(wait_root));
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        assert!(!wait.is_finished());
+        drop(lock);
+
+        assert!(wait.await.expect("wait task").expect("lock check"));
+    }
 
     #[tokio::test]
     async fn watch_rebuild_updates_project_and_emits_reload() {

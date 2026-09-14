@@ -75,7 +75,7 @@ r#"        private final String dataPath;
                 paint.setStyle(Paint.Style.FILL);
                 paint.setColor(doweAlpha(contentColor, 0.64f));
                 paint.setTextAlign(Paint.Align.CENTER);
-                paint.setTextSize(13f * getResources().getDisplayMetrics().scaledDensity);
+                paint.setTextSize(doweNativeTextSize(13f) * getResources().getDisplayMetrics().density);
                 canvas.drawText(loading ? "Loading" : emptyLabel, getWidth() / 2f, getHeight() / 2f, paint);
                 return;
             }
@@ -267,7 +267,7 @@ r#"        private final String dataPath;
                     float labelY = centerY + labelRadius * (float) Math.sin(angle);
                     String label = item.label + (hideValues ? "" : " " + item.value);
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setTextSize(11f * getResources().getDisplayMetrics().scaledDensity);
+                    paint.setTextSize(doweNativeTextSize(11f) * getResources().getDisplayMetrics().density);
                     paint.setTextAlign(labelX < centerX ? Paint.Align.RIGHT : labelX > centerX ? Paint.Align.LEFT : Paint.Align.CENTER);
                     paint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
                     float textWidth = paint.measureText(label);
@@ -292,7 +292,7 @@ r#"        private final String dataPath;
         }
 
         private void doweDrawChartCenterBadge(Canvas canvas, float centerX, float centerY, String topText, String bottomText, float topSize, float bottomSize) {
-            float density = getResources().getDisplayMetrics().scaledDensity;
+            float density = getResources().getDisplayMetrics().density;
             float topBaseline = centerY - doweDp(5f);
             float bottomBaseline = centerY + doweDp(19f);
             float maxWidth = 0f;
@@ -301,14 +301,14 @@ r#"        private final String dataPath;
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
             if (topText != null && !topText.isEmpty()) {
-                paint.setTextSize(topSize * density);
+                paint.setTextSize(doweNativeTextSize(topSize) * density);
                 maxWidth = Math.max(maxWidth, paint.measureText(topText));
                 Paint.FontMetrics metrics = paint.getFontMetrics();
                 contentTop = Math.min(contentTop, topBaseline + metrics.ascent);
                 contentBottom = Math.max(contentBottom, topBaseline + metrics.descent);
             }
             if (bottomText != null && !bottomText.isEmpty()) {
-                paint.setTextSize(bottomSize * density);
+                paint.setTextSize(doweNativeTextSize(bottomSize) * density);
                 maxWidth = Math.max(maxWidth, paint.measureText(bottomText));
                 Paint.FontMetrics metrics = paint.getFontMetrics();
                 contentTop = Math.min(contentTop, bottomBaseline + metrics.ascent);
@@ -333,12 +333,12 @@ r#"        private final String dataPath;
             paint.setStyle(Paint.Style.FILL);
             if (topText != null && !topText.isEmpty()) {
                 paint.setColor(doweAlpha(contentColor, 0.72f));
-                paint.setTextSize(topSize * density);
+                paint.setTextSize(doweNativeTextSize(topSize) * density);
                 canvas.drawText(topText, centerX, topBaseline, paint);
             }
             if (bottomText != null && !bottomText.isEmpty()) {
                 paint.setColor(contentColor);
-                paint.setTextSize(bottomSize * density);
+                paint.setTextSize(doweNativeTextSize(bottomSize) * density);
                 canvas.drawText(bottomText, centerX, bottomBaseline, paint);
             }
         }
@@ -348,7 +348,7 @@ r#"        private final String dataPath;
                 return;
             }
             paint.setStyle(Paint.Style.FILL);
-            paint.setTextSize(12f * getResources().getDisplayMetrics().scaledDensity);
+            paint.setTextSize(doweNativeTextSize(12f) * getResources().getDisplayMetrics().density);
             paint.setTextAlign(Paint.Align.LEFT);
             float x = getPaddingLeft();
             float baseline = y;

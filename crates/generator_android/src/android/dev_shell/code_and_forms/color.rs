@@ -174,7 +174,7 @@ fn dev_activity_code_and_forms_color() -> &'static str {
         EditText search = new EditText(this);
         search.setSingleLine(true);
         search.setHint(searchPlaceholder);
-        search.setTextSize(14f);
+        search.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize(14f));
         search.setTextColor(DOWE_SURFACE_TEXT);
         search.setHintTextColor(doweAlpha(DOWE_SURFACE_TEXT, 0.55f));
         search.setPadding(doweDp(12), 0, doweDp(12), 0);

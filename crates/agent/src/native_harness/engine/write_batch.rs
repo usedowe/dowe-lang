@@ -23,6 +23,34 @@ async fn execute_text_write_batch(
     persist: bool,
     turn_codegraph_binding: Option<&CodeGraphBinding>,
 ) -> AgentResult<TextWriteBatchResults> {
+    if exhausted(config, usage, 0, started) {
+        let results = calls
+            .iter()
+            .map(|call| {
+                text_write_result(
+                    tools,
+                    config,
+                    call,
+                    false,
+                    json!({"status":"not_executed","reason":"budget_exhausted"}),
+                )
+            })
+            .collect::<Vec<_>>();
+        for result in &results {
+            emit_persist(
+                store,
+                session,
+                persist,
+                host,
+                json!({"event":"tool_result","result":result}),
+            )?;
+        }
+        return Ok(TextWriteBatchResults {
+            results,
+            approval_required: false,
+            graph_dirty: false,
+        });
+    }
     let approvals = match tools.prepare_text_write_batch(calls, role) {
         Ok(approvals) => approvals,
         Err(error) => {

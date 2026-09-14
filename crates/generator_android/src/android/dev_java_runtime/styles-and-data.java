@@ -450,7 +450,7 @@
             ((TextView) view).setTextColor(doweButtonContent(variant, scheme));
             if (sizePath instanceof String) {
                 String size = doweReactiveEnum(sizePath, "size", "md");
-                ((TextView) view).setTextSize("xs".equals(size) ? 12f : "sm".equals(size) ? 14f : "lg".equals(size) ? 18f : "xl".equals(size) ? 20f : 16f);
+                ((TextView) view).setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize("xs".equals(size) ? 12f : "sm".equals(size) ? 14f : "lg".equals(size) ? 18f : "xl".equals(size) ? 20f : 16f));
                 view.setMinimumHeight(doweButtonMinHeight(size));
                 view.setPadding(doweButtonHorizontalPadding(size), doweButtonVerticalPadding(size), doweButtonHorizontalPadding(size), doweButtonVerticalPadding(size));
             }

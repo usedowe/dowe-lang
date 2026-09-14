@@ -69,7 +69,7 @@ async fn handle_watch_changes(
     watcher: &mut SourceWatcher,
     paths: Vec<String>,
 ) {
-    let paths = match debounce_changes(watcher, paths.clone()).await {
+    let mut paths = match debounce_changes(watcher, paths.clone()).await {
         Ok(paths) => paths,
         Err(error) => {
             let error = error.to_string();
@@ -83,6 +83,36 @@ async fn handle_watch_changes(
             return;
         }
     };
+    let waited_for_agent = match wait_for_agent_write_batch(root.to_path_buf()).await {
+        Ok(waited) => waited,
+        Err(error) => {
+            let error = error.to_string();
+            report_hot_reload_failure(&error);
+            state.events.emit(
+                DevEventType::RebuildFailed,
+                None::<String>,
+                Some(error),
+                paths,
+            );
+            return;
+        }
+    };
+    if waited_for_agent {
+        match debounce_changes(watcher, Vec::new()).await {
+            Ok(trailing) => paths.extend(trailing),
+            Err(error) => {
+                let error = error.to_string();
+                report_hot_reload_failure(&error);
+                state.events.emit(
+                    DevEventType::RebuildFailed,
+                    None::<String>,
+                    Some(error),
+                    paths,
+                );
+                return;
+            }
+        }
+    }
     state.events.emit(
         DevEventType::ChangeDetected,
         None::<String>,
@@ -308,4 +338,32 @@ async fn debounce_changes(
     }
 
     Ok(paths.into_iter().collect())
+}
+
+async fn wait_for_agent_write_batch(root: PathBuf) -> RuntimeResult<bool> {
+    let lock_path = root.join(".dowe-agent-write.lock");
+    let mut waited = false;
+    loop {
+        let file = match std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&lock_path)
+        {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(waited),
+            Err(error) => return Err(error.into()),
+        };
+        match file.try_lock() {
+            Ok(()) => return Ok(waited),
+            Err(std::fs::TryLockError::WouldBlock) => {
+                waited = true;
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            Err(error) => {
+                return Err(crate::error::RuntimeError::new(format!(
+                    "agent write lock check failed: {error:?}"
+                )));
+            }
+        }
+    }
 }

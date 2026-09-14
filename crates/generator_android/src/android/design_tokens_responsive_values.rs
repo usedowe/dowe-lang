@@ -296,6 +296,10 @@ fn dev_text_size_expr(title: bool, value: TextSize) -> String {
     )
 }
 
+fn dev_native_text_size_expr(title: bool, value: TextSize) -> String {
+    format!("doweNativeTextSize({})", dev_text_size_expr(title, value))
+}
+
 fn dev_responsive_value<T, F>(value: &ResponsiveValue<T>, map: F) -> String
 where
     F: Fn(&T) -> String,

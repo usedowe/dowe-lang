@@ -115,7 +115,7 @@ r#"    private final class DoweDiagramView extends View {
         void setConnectListener(String name) { this.connectAction = name; }
         void setOnDiagramAction(OnDiagramAction sink) { this.actionSink = sink; }
 
-        private float spToPx(int sp) { return sp * getResources().getDisplayMetrics().scaledDensity; }
+        private float spToPx(int sp) { return doweNativeTextSize(sp) * getResources().getDisplayMetrics().density; }
 
         private float number(Map<String, Object> row, String key, float fallback) {
             Object value = row.get(key);

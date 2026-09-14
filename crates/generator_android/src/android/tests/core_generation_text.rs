@@ -70,6 +70,15 @@ fn generates_compose_box_and_text() {
             .contains("Font(R.font.inter_extrabold, FontWeight.Black)")
     );
     assert!(views.content.contains("DoweFont.Inter -> DoweFonts.inter"));
+    assert!(views
+        .content
+        .contains("private const val DOWE_ANDROID_TEXT_SCALE = 1.15f"));
+    assert!(views
+        .content
+        .contains("val doweDensity = Density(systemDensity.density, fontScale = DOWE_ANDROID_TEXT_SCALE)"));
+    assert!(views
+        .content
+        .contains("CompositionLocalProvider(LocalDensity provides doweDensity)"));
 
     let root_gradle = output
         .files
@@ -206,6 +215,16 @@ fn generates_compose_box_and_text() {
         dev.content
             .contains("view.setTypeface(doweTypeface(font, weight));")
     );
+    assert!(dev
+        .content
+        .contains("private static final float DOWE_ANDROID_TEXT_SCALE = 1.15f;"));
+    assert!(dev
+        .content
+        .contains("view.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize(size));"));
+    assert!(dev
+        .content
+        .contains("return value * DOWE_ANDROID_TEXT_SCALE;"));
+    assert!(!dev.content.contains("view.setTextSize(size);"));
     assert!(
         !dev.content
             .contains("Typeface baseTypeface = Typeface.create(font, Typeface.NORMAL);")

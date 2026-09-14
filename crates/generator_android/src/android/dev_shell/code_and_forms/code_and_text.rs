@@ -63,7 +63,7 @@ fn dev_activity_code_and_forms_code_and_text() -> &'static str {
     private <T extends TextView> T doweConfigureText(T view, String value, int color, float size, int weight, float letterSpacing, float lineHeight, String font) {
         view.setText(value);
         view.setTextColor(color);
-        view.setTextSize(size);
+        view.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize(size));
         view.setTypeface(doweTypeface(font, weight));
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P && doweVariableFont(font)) {
             view.setFontVariationSettings("'wght' " + weight);

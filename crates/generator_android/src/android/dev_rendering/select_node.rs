@@ -31,7 +31,7 @@ fn render_dev_android_select(
             let control_size = props.size.unwrap_or(ButtonSize::Md);
             let control_height =
                 form_control_min_height(control_size, props.label_floating).native_units();
-            let text_size = dev_text_size_expr(false, form_control_text_size(control_size));
+            let text_size = dev_native_text_size_expr(false, form_control_text_size(control_size));
             let frame = if props.label.is_some() && !props.label_floating {
                 Some(next_dev_view(counter))
             } else {
@@ -125,7 +125,7 @@ fn render_dev_android_select(
                                         ));
             }
             output.push_str(&format!(
-                                        "        String[] {field}Labels = {labels};\n        String[] {field}Values = {values};\n        String[] {field}Descriptions = {descriptions};\n        TextView {field} = doweSelectTrigger(\"{}\", {content}, {font});\n        {field}.setTextSize({});\n        {field}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), 0, doweDp(36), 0);\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n        final String[] {field}Selected = new String[]{{{selected}}};\n",
+                                        "        String[] {field}Labels = {labels};\n        String[] {field}Values = {values};\n        String[] {field}Descriptions = {descriptions};\n        TextView {field} = doweSelectTrigger(\"{}\", {content}, {font});\n        {field}.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, {});\n        {field}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), 0, doweDp(36), 0);\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n        final String[] {field}Selected = new String[]{{{selected}}};\n",
                                         escape_java(placeholder),
                                         text_size,
                                         control_height,

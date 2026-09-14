@@ -128,7 +128,7 @@ async fn execute_harness_calls(
             {
                 batch_end += 1;
             }
-            if batch_end - batch_start > 1 {
+            if batch_end > batch_start {
                 let batch = execute_text_write_batch(
                     store,
                     session,

@@ -222,7 +222,7 @@ fn generates_labeled_input_and_select_fields() {
     assert!(dev.content.contains("expanded || hasSelection"));
     assert!(
         dev.content
-            .contains("label.setTextSize(active ? 12f : baseSize);")
+            .contains("label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, active ? doweNativeTextSize(12f) : baseSize);")
     );
     assert!(dev.content.contains("input.setPadding(input.getPaddingLeft(), active ? doweDp(10) : 0, input.getPaddingRight(), input.getPaddingBottom());"));
     assert!(dev.content.contains("doweSelectFrame("));

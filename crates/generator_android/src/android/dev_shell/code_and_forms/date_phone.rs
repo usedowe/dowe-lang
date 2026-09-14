@@ -16,7 +16,7 @@ fn dev_activity_code_and_forms_date_phone() -> &'static str {
         EditText search = new EditText(this);
         search.setSingleLine(true);
         search.setHint(searchPlaceholder);
-        search.setTextSize(14f);
+        search.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize(14f));
         search.setTextColor(DOWE_SURFACE_TEXT);
         search.setHintTextColor(doweAlpha(DOWE_SURFACE_TEXT, 0.55f));
         search.setPadding(doweDp(12), 0, doweDp(12), 0);
@@ -82,8 +82,8 @@ fn dev_activity_code_and_forms_date_phone() -> &'static str {
         if (!floating || label == null) {
             return;
         }
-        float baseSize = input.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
-        label.setTextSize(active ? 12f : baseSize);
+        float baseSize = input.getTextSize() / getResources().getDisplayMetrics().density;
+        label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, active ? doweNativeTextSize(12f) : baseSize);
         FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.START | (active ? Gravity.TOP : Gravity.CENTER_VERTICAL));
         labelParams.leftMargin = doweDp(12);
         labelParams.rightMargin = doweDp(36);
@@ -128,8 +128,8 @@ fn dev_activity_code_and_forms_date_phone() -> &'static str {
         if (endIcon != null) {
             endIcon.setVisibility(active ? View.VISIBLE : View.GONE);
         }
-        float baseSize = input.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
-        label.setTextSize(active ? 12f : baseSize);
+        float baseSize = input.getTextSize() / getResources().getDisplayMetrics().density;
+        label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, active ? doweNativeTextSize(12f) : baseSize);
         FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.START | (active ? Gravity.TOP : Gravity.CENTER_VERTICAL));
         labelParams.leftMargin = doweDp(active && startIcon != null ? 44 : 12);
         labelParams.rightMargin = doweDp(active && endIcon != null ? 44 : 12);

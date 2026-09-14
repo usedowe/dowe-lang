@@ -18,6 +18,34 @@ use std::path::Path;
 #[path = "tests/request.rs"]
 mod tests;
 
+const MAX_HARNESS_HISTORY_BYTES: usize = 96 * 1024;
+const MIN_HARNESS_HISTORY_BYTES: usize = 8 * 1024;
+const RESERVED_OUTPUT_TOKENS: u64 = 8192;
+
+fn harness_history_budget(
+    config: &HarnessConfig,
+    selection: &ModelSelection,
+    request: &AgentRequest,
+) -> AgentResult<usize> {
+    let context_limit = config
+        .context_limit
+        .or_else(|| {
+            crate::agent_model_details(&selection.provider, &selection.model)
+                .and_then(|details| details.context_window)
+        })
+        .unwrap_or(64_000);
+    let context_bytes = context_limit
+        .saturating_sub(RESERVED_OUTPUT_TOKENS)
+        .saturating_mul(3);
+    let base_bytes = serde_json::to_vec(request)?.len() as u64;
+    let available_bytes = context_bytes.saturating_sub(base_bytes) as usize;
+    Ok(if available_bytes < MIN_HARNESS_HISTORY_BYTES {
+        available_bytes
+    } else {
+        available_bytes.min(MAX_HARNESS_HISTORY_BYTES)
+    })
+}
+
 pub(super) fn build_request(
     store: &HarnessStore,
     session: &HarnessSession,
@@ -54,11 +82,7 @@ pub(super) fn build_request(
         } else {
             String::new()
         },
-        if dowe_mode {
-            crate::prompts::SCREENSHOT_UI_POLICY
-        } else {
-            ""
-        },
+        "",
         select_units(prompt, &[]),
         agent_label = if dowe_mode { "Dowe" } else { "Coding" },
         dowe_specialization = if dowe_mode {
@@ -68,7 +92,8 @@ pub(super) fn build_request(
         },
     );
     if dowe_mode {
-        system.push_str("\n\nComplete Dowe source syntax bootstrap (mandatory before any write):\n");
+        system
+            .push_str("\n\nComplete Dowe source syntax bootstrap (mandatory before any write):\n");
         system.push_str(crate::prompts::DOWE_SYNTAX_CONTRACT);
         let syntax = skill_unit("core/syntax")?;
         system.push_str("\n\nEmbedded `core/syntax` reference (complete):\n");
@@ -84,8 +109,10 @@ pub(super) fn build_request(
                         if parts.iter().any(|part| matches!(part, crate::AgentMessagePart::ImageUrl { .. }))
                 )
             })
-        });
+    });
     if dowe_mode && reference_evidence {
+        system.push_str("\n\n");
+        system.push_str(crate::prompts::SCREENSHOT_UI_POLICY);
         system.push_str("\n\nPreloaded Dowe visual authoring contract (fixed guidance):\n");
         system.push_str(crate::prompts::DOWE_VIEW_DEFAULTS_CONTRACT);
         system.push_str("\nReference images are evidence only. Inspect the full image, map its hierarchy to semantic components, and use native visual QA after writing when the host can capture a loopback page. For an attached-reference task, the harness requires a post-write capture attempt; `not_run` is unverified evidence, never visual parity.");
@@ -197,13 +224,50 @@ pub(super) fn build_request(
     } else {
         turns.extend_from_slice(&session.turns[session.context_start..]);
     }
-    request.extra.insert(
-        "dowe_harness_turns".into(),
-        super::continuation::request_turns(
-            &turns,
-            &format!("{}/{}", selection.provider, selection.model),
-        )?,
-    );
+    if role == HarnessRole::Execute
+        && !turns.iter().any(|turn| {
+            turn.message.as_ref().is_some_and(|message| {
+                message.role == "user"
+                    && match &message.content {
+                        AgentMessageContent::Text(text) => text == prompt,
+                        AgentMessageContent::Parts(parts) => parts.iter().any(|part| {
+                            matches!(part, crate::AgentMessagePart::Text { text } if text == prompt)
+                        }),
+                    }
+            })
+        })
+    {
+        // Automatic compaction may advance context_start past the original
+        // user turn. Keep the live task instruction explicit after that
+        // projection instead of relying on a model-generated summary alone.
+        turns.insert(
+            0,
+            HarnessTurn {
+                message: Some(AgentMessage {
+                    role: "user".into(),
+                    content: AgentMessageContent::Text(prompt.into()),
+                }),
+                ..Default::default()
+            },
+        );
+    }
+    let preserve_images = turns.last().is_some_and(|turn| {
+        turn.message.as_ref().is_some_and(|message| {
+            matches!(
+                &message.content,
+                crate::AgentMessageContent::Parts(parts)
+                    if parts.iter().any(|part| matches!(part, crate::AgentMessagePart::ImageUrl { .. }))
+            )
+        })
+    });
+    let history_budget = harness_history_budget(config, selection, &request)?;
+    let (history, history_bounded) = super::continuation::request_turns_bounded(
+        &turns,
+        &format!("{}/{}", selection.provider, selection.model),
+        history_budget,
+        preserve_images,
+    )?;
+    request.extra.insert("dowe_harness_turns".into(), history);
     let packet = task_packet(session, role, prompt, config.token_budget);
     packet
         .validate()
@@ -235,6 +299,12 @@ pub(super) fn build_request(
         .metadata
         .get_or_insert_with(Default::default)
         .insert("harness_role".into(), format!("{role:?}").to_lowercase());
+    if history_bounded {
+        request.metadata.as_mut().unwrap().insert(
+            "context_projection".into(),
+            format!("bounded_history:{history_budget}_bytes"),
+        );
+    }
     if let Some(semantic) = semantic {
         request.metadata.as_mut().unwrap().insert(
             "semantic_enrichment".into(),

@@ -28,6 +28,7 @@ impl HarnessTools {
             virtual_files.insert(resolved, approval.after.clone());
             approvals.push(approval);
         }
+        self.preflight_dowe_write_batch(&virtual_files)?;
         for approval in &approvals {
             self.pending
                 .insert(approval.id.clone(), Self::approval_digest(approval)?);

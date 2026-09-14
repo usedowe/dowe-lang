@@ -16,7 +16,7 @@ fn render_dev_android_pin(
         || props.help_text.is_some()
         || props.error_text.is_some();
     let size = props.style.size.unwrap_or(ButtonSize::Md);
-    let text_size = dev_text_size_expr(false, form_control_text_size(size));
+    let text_size = dev_native_text_size_expr(false, form_control_text_size(size));
     let (width, height) = match size {
         ButtonSize::Sm => (40, 32),
         ButtonSize::Lg => (52, 48),
@@ -85,7 +85,7 @@ fn render_dev_android_pin(
                 .unwrap_or_else(|| "\"\"".to_string())
         };
         output.push_str(&format!(
-            "        EditText {cell} = new EditText(this);\n        {cell}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({width}), doweDp({height})));\n        {cell}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {cell}.setTextSize({});\n        {cell}.setIncludeFontPadding(false);\n        {cell}.setGravity(Gravity.CENTER);\n        {cell}.setTextColor({content});\n        {cell}.setSingleLine(true);\n        {cell}.setInputType({input_type});\n        {cell}.setMaxLines(1);\n        {cell}.setPadding(doweDp(8), 0, doweDp(8), 0);\n        {cell}.setBackground({background});\n        {cell}.setText({initial});\n        {pin_cells}[{index}] = {cell};\n",
+            "        EditText {cell} = new EditText(this);\n        {cell}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({width}), doweDp({height})));\n        {cell}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {cell}.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, {});\n        {cell}.setIncludeFontPadding(false);\n        {cell}.setGravity(Gravity.CENTER);\n        {cell}.setTextColor({content});\n        {cell}.setSingleLine(true);\n        {cell}.setInputType({input_type});\n        {cell}.setMaxLines(1);\n        {cell}.setPadding(doweDp(8), 0, doweDp(8), 0);\n        {cell}.setBackground({background});\n        {cell}.setText({initial});\n        {pin_cells}[{index}] = {cell};\n",
             text_size
         ));
         let write = bind_path

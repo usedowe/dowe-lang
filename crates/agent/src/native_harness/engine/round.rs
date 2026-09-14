@@ -75,7 +75,7 @@ async fn run_harness_round(
         // same bound instead of the remaining cumulative total so an
         // otherwise valid task cannot fail while preparing its summary.
         compact_config.token_budget = config.token_budget;
-        let _compact_charge = tokio::time::timeout(
+        let compacted = match tokio::time::timeout(
             Duration::from_secs(config.duration_seconds).saturating_sub(state.started.elapsed()),
             compact(
                 store,
@@ -93,23 +93,38 @@ async fn run_harness_round(
             AgentError::new(
                 "task duration exhausted during compaction; inspect the preserved history",
             )
-        })??;
-        tools.restore_loaded_skills(&session.turns[session.context_start..]);
-        request = build_request(
-            store,
-            session,
-            config,
-            role,
-            selected,
-            prompt,
-            Some(semantic),
-        )?;
-        annotate_permission_mode(&mut request, tools);
-        estimate = super::task::estimate_request(&request)?;
-        if estimate + 6144 >= limit {
-            return Err(AgentError::new(
-                "compacted context still exceeds destination window; start a new session",
-            ));
+        })? {
+            Ok(_) => true,
+            Err(error) if error.to_string() == NO_SAFE_COMPACTION_BOUNDARY => {
+                emit_persist(
+                    store,
+                    session,
+                    persist,
+                    host,
+                    json!({"event":"context_projected","reason":"no_safe_compaction_boundary","policy":"bounded_history"}),
+                )?;
+                false
+            }
+            Err(error) => return Err(error),
+        };
+        if compacted {
+            tools.restore_loaded_skills(&session.turns[session.context_start..]);
+            request = build_request(
+                store,
+                session,
+                config,
+                role,
+                selected,
+                prompt,
+                Some(semantic),
+            )?;
+            annotate_permission_mode(&mut request, tools);
+            estimate = super::task::estimate_request(&request)?;
+            if estimate + 6144 >= limit {
+                return Err(AgentError::new(
+                    "compacted context still exceeds destination window; use the bounded recent history",
+                ));
+            }
         }
     }
     if exhausted(config, &state.usage, 0, state.started)

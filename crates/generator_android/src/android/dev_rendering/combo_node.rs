@@ -19,7 +19,7 @@ fn render_dev_android_combo(
         || props.error_text.is_some();
     let size = props.style.size.unwrap_or(ButtonSize::Md);
     let control_height = form_control_min_height(size, props.style.label_floating).native_units();
-    let text_size = dev_text_size_expr(false, form_control_text_size(size));
+    let text_size = dev_native_text_size_expr(false, form_control_text_size(size));
     let radius = dev_style_radius(&props.style.style);
     let background =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
@@ -109,7 +109,7 @@ fn render_dev_android_combo(
     {
         output.push_str(&format!("        TextView {view}Label = doweControlLabel(\"{}\", {content}, {font});\n        doweAdd({view}, {view}Label);\n", escape_java(label)));
     }
-    output.push_str(&format!("        TextView {input} = doweSelectTrigger(\"{}\", {content}, {font});\n        {input}.setTextSize({text_size});\n        {input}.setMinHeight(doweDp({control_height}));\n        FrameLayout {field} = doweFloatingControl({background});\n        {field}.setMinimumHeight(doweDp({control_height}));\n        {field}.addView({input}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER_VERTICAL));\n        DoweSvgView {field}Arrow = doweSelectArrow({content});\n        FrameLayout.LayoutParams {field}ArrowParams = new FrameLayout.LayoutParams(doweDp(16), doweDp(16), Gravity.END | Gravity.CENTER_VERTICAL);\n        {field}ArrowParams.rightMargin = doweDp(12);\n        {field}.addView({field}Arrow, {field}ArrowParams);\n",
+    output.push_str(&format!("        TextView {input} = doweSelectTrigger(\"{}\", {content}, {font});\n        {input}.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, {text_size});\n        {input}.setMinHeight(doweDp({control_height}));\n        FrameLayout {field} = doweFloatingControl({background});\n        {field}.setMinimumHeight(doweDp({control_height}));\n        {field}.addView({input}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER_VERTICAL));\n        DoweSvgView {field}Arrow = doweSelectArrow({content});\n        FrameLayout.LayoutParams {field}ArrowParams = new FrameLayout.LayoutParams(doweDp(16), doweDp(16), Gravity.END | Gravity.CENTER_VERTICAL);\n        {field}ArrowParams.rightMargin = doweDp(12);\n        {field}.addView({field}Arrow, {field}ArrowParams);\n",
         escape_java(props.style.placeholder.as_deref().unwrap_or("Select an option"))
     ));
     if let Some(label) = props

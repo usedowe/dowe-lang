@@ -57,6 +57,89 @@ fn built_harness_request_contains_shared_screenshot_policy() {
 }
 
 #[test]
+fn simple_dowe_request_omits_reference_only_screenshot_policy() {
+    let root = tempfile::tempdir().expect("root");
+    std::fs::write(root.path().join("main.dowe"), "main").expect("Dowe marker");
+    let state = tempfile::tempdir().expect("state");
+    let store = HarnessStore::new(state.path(), root.path()).expect("store");
+    let session = store.create_session().expect("session");
+    let request = build_request(
+        &store,
+        &session,
+        &HarnessConfig::default(),
+        HarnessRole::Execute,
+        &ModelSelection::new("openai", "gpt-5.5"),
+        "fix the data binding",
+        None,
+    )
+    .expect("request");
+    let AgentMessageContent::Text(system) = &request.messages[0].content else {
+        panic!("system text")
+    };
+
+    assert!(system.contains(crate::prompts::DOWE_SYNTAX_CONTRACT));
+    assert!(!system.contains(crate::prompts::SCREENSHOT_UI_POLICY));
+}
+
+#[test]
+fn request_history_projection_bounds_large_tool_context() {
+    let root = tempfile::tempdir().expect("root");
+    std::fs::write(root.path().join("main.dowe"), "main").expect("Dowe marker");
+    let state = tempfile::tempdir().expect("state");
+    let store = HarnessStore::new(state.path(), root.path()).expect("store");
+    let mut session = store.create_session().expect("session");
+    session.turns = vec![
+        HarnessTurn {
+            message: Some(AgentMessage {
+                role: "user".into(),
+                content: AgentMessageContent::Text("initial task".into()),
+            }),
+            ..Default::default()
+        },
+        HarnessTurn {
+            message: Some(AgentMessage {
+                role: "assistant".into(),
+                content: AgentMessageContent::Text("large assistant evidence ".repeat(100_000)),
+            }),
+            ..Default::default()
+        },
+        HarnessTurn {
+            message: Some(AgentMessage {
+                role: "user".into(),
+                content: AgentMessageContent::Text("latest evidence".into()),
+            }),
+            ..Default::default()
+        },
+    ];
+    let config = HarnessConfig {
+        context_limit: Some(32_768),
+        ..Default::default()
+    };
+    let request = build_request(
+        &store,
+        &session,
+        &config,
+        HarnessRole::Execute,
+        &ModelSelection::new("openai", "gpt-5.5"),
+        "continue the task",
+        None,
+    )
+    .expect("request");
+
+    let history = &request.extra["dowe_harness_turns"];
+    assert!(serde_json::to_vec(history).unwrap().len() <= 96 * 1024);
+    assert!(history.to_string().contains("continue the task"));
+    assert!(history.to_string().contains("assistant context trimmed"));
+    assert!(
+        request
+            .metadata
+            .as_ref()
+            .and_then(|metadata| metadata.get("context_projection"))
+            .is_some_and(|value| value.starts_with("bounded_history:"))
+    );
+}
+
+#[test]
 fn review_request_contains_only_confirmed_change_hunks() {
     let root = tempfile::tempdir().expect("root");
     std::fs::write(root.path().join("src.rs"), "after").expect("source");
