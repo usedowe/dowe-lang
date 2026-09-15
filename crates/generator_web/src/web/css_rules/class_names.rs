@@ -176,6 +176,7 @@ fn is_structural_class(class_name: &str) -> bool {
             | "carousel"
             | "carousel-header"
             | "carousel-title"
+            | "carousel-stage"
             | "carousel-viewport"
             | "carousel-container"
             | "carousel-slide"

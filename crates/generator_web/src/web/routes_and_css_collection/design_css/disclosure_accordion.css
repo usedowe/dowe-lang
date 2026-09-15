@@ -32,7 +32,8 @@
   border:0;
   background:transparent;
   color:inherit;
-  padding:.75rem 1rem;
+  min-height:var(--dowe-accordion-header-height);
+  padding:0 var(--dowe-accordion-header-padding);
   text-align:left;
   cursor:pointer;
   font:inherit;
@@ -54,7 +55,7 @@
   transform:rotate(180deg);
 }
 .collapsible-content {
-  padding:.75rem 1rem;
+  padding:var(--dowe-accordion-content-padding);
   font-size:.875rem;
   line-height:1.5;
 }
@@ -97,8 +98,8 @@
   gap:.75rem;
 }
 .accordion-label {
-  font-size:.875rem;
-  font-weight:600;
+  font-size:.9375rem;
+  font-weight:700;
   line-height:1.25rem;
 }
 .accordion-end {

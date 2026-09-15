@@ -1,0 +1,20 @@
+component MediaCta
+  Section id:"future" boxed:true
+    Card scheme:"primary" rounded:"lg" p:{ xs:7 md:10 } shadow:"lg"
+      Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:12 } align:"center"
+        Flex direction:"column" align:"start" gap:3 maxW:"xl"
+          Text spacing:"widest"
+            "EL FUTURO ES ABIERTO"
+          Title size:"4xl"
+            "Construyamos juntos"
+          Text
+            "Una visión clara para que la tecnología genere más oportunidades para las personas."
+          Flex gap:3
+            Button href:"#genesis" scheme:"secondary"
+              "Invertir en Genesis"
+            Button href:"#contact" variant:"outlined" scheme:"secondary"
+              "Leer White Paper"
+        Svg viewBox:"0 0 560 240" w:"full" h:44
+          Path d:"M0 220L130 84L220 220Z" fill:"secondary"
+          Path d:"M116 220L280 24L452 220Z" fill:"accent"
+          Path d:"M292 220L392 108L560 220Z" fill:"secondary"

@@ -82,6 +82,7 @@ fn rich_control_map_tree() -> ViewNode {
                     pagination: Some(dowe_components::PaginationProps {
                         total: dowe_components::PaginationTotal::Signal("total".to_string()),
                         page_size: 60,
+                        variant: dowe_components::PaginationVariant::Pages,
                     }),
                     value: Some("page".to_string()),
                     selected: "3".to_string(),

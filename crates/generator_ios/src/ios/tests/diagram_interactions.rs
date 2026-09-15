@@ -7,6 +7,7 @@ fn diagram_ios_uses_preview_geometry_and_committed_callbacks() {
     assert!(runtime.contains("while usedIds.contains(\"edge-\\(sequence)\") { sequence += 1 }"));
     assert!(runtime.contains("if persistConnection(source: id, target: targetId), let onConnect"));
     assert!(runtime.contains("let position = effectivePosition(node)"));
+    assert!(runtime.contains("let x = position.x, y = position.y"));
     assert!(runtime.contains("let x = (effectivePosition(node).x - projection.minX)"));
     assert!(
         runtime.contains(".onTapGesture {\n                        selectedKey = \"node:\" + id;")

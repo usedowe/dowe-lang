@@ -11,6 +11,12 @@ fn toggle_group_classes(props: &ToggleGroupProps) -> Vec<String> {
     let mut classes = variant_classes("toggle-group", &props.style);
     if props.kind == ToggleGroupKind::Pagination {
         classes.push("pagination".to_string());
+        let variant = props
+            .pagination
+            .as_ref()
+            .map(|pagination| pagination.variant.as_str())
+            .unwrap_or("pages");
+        classes.push(format!("pagination-{variant}"));
     }
     classes.push(format!("toggle-group-{}", props.size.as_str()));
     if props.wide {
@@ -187,4 +193,3 @@ fn command_panel_classes(props: &CommandProps) -> Vec<String> {
 fn command_classes(props: &CommandProps) -> Vec<String> {
     variant_classes("command", &props.style)
 }
-

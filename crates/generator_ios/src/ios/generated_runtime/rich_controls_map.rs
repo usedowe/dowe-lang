@@ -15,6 +15,7 @@ struct DoweToggleGroup: View {
     let ariaLabel: String?
     let backgroundColor: Color
     let contentColor: Color
+    let accentColor: Color
     let borderColor: Color?
     let onChange: (() -> Void)?
 
@@ -60,15 +61,27 @@ struct DoweToggleGroup: View {
         }
     }
 }
+struct DowePaginationControlContract {
+    let controlSize: CGFloat
+    let indicatorGap: CGFloat
+    let indicatorHeight: CGFloat
+    let indicatorInactiveWidth: CGFloat
+    let indicatorActiveWidth: CGFloat
+    let indicatorDotSize: CGFloat
+    let indicatorDotActiveScale: CGFloat
+}
 
 struct DowePagination<PreviousIcon: View, NextIcon: View>: View {
     @Binding var value: String
     let pageCount: Int
     let size: String
+    let control: DowePaginationControlContract
+    let paginationVariant: String
     let disabled: Bool
     let ariaLabel: String?
     let backgroundColor: Color
     let contentColor: Color
+    let accentColor: Color
     let borderColor: Color?
     let onChange: (() -> Void)?
     @ViewBuilder let previousIcon: () -> PreviousIcon
@@ -78,9 +91,7 @@ struct DowePagination<PreviousIcon: View, NextIcon: View>: View {
         min(pageCount, max(1, Int(value) ?? 1))
     }
 
-    private var dimension: CGFloat {
-        size == "xs" ? 24 : size == "sm" ? 32 : size == "lg" ? 48 : 40
-    }
+    private var dimension: CGFloat { control.controlSize }
 
     private var pages: [Int?] {
         if pageCount <= 7 { return Array(1...pageCount).map(Optional.some) }
@@ -93,19 +104,32 @@ struct DowePagination<PreviousIcon: View, NextIcon: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
-            control(selected: true, enabled: !disabled && current > 1, label: "Previous page", action: { select(current - 1) }) { previousIcon() }
-            ForEach(Array(pages.enumerated()), id: \.offset) { _, page in
-                if let page {
-                    control(selected: page == current, enabled: !disabled, label: "Page \(page)", action: { select(page) }) {
-                        Text(String(page)).font(.system(size: size == "lg" ? 17 : size == "xs" ? 12 : size == "sm" ? 13 : 14, weight: .medium))
+        HStack(spacing: control.indicatorGap) {
+            if paginationVariant == "pages" || paginationVariant == "controls" {
+                DoweIconButton(enabled: !disabled && current > 1, dimension: dimension, backgroundColor: backgroundColor, contentColor: contentColor, borderColor: borderColor, label: "Previous page", action: { select(current - 1) }) { previousIcon() }
+            }
+            if paginationVariant == "pages" {
+                ForEach(Array(pages.enumerated()), id: \.offset) { _, page in
+                    if let page {
+                        control(selected: page == current, enabled: !disabled, label: "Page \(page)", action: { select(page) }) {
+                            Text(String(page)).font(.system(size: size == "lg" ? 17 : size == "xs" ? 12 : size == "sm" ? 13 : 14, weight: .medium))
+                        }
+                        .accessibilityAddTraits(page == current ? .isSelected : [])
+                    } else {
+                        Text("…").foregroundStyle(DoweDesign.backgroundText.opacity(0.6)).frame(width: dimension, height: dimension)
                     }
-                    .accessibilityAddTraits(page == current ? .isSelected : [])
-                } else {
-                    Text("…").foregroundStyle(DoweDesign.backgroundText.opacity(0.6)).frame(width: dimension, height: dimension)
+                }
+            } else {
+                ForEach(1...max(1, pageCount), id: \.self) { page in
+                    DowePaginationIndicator(active: page == current, dot: paginationVariant == "dots", enabled: !disabled, size: size, color: accentColor, label: "Go to page \(page)", action: { select(page) }, inactiveWidth: control.indicatorInactiveWidth, activeWidth: control.indicatorActiveWidth, height: control.indicatorHeight, dotSize: control.indicatorDotSize, dotActiveScale: control.indicatorDotActiveScale)
+                }
+                if paginationVariant == "controls" {
+                    Text("\(current) / \(pageCount)").font(.system(size: 13, weight: .semibold)).foregroundStyle(accentColor)
                 }
             }
-            control(selected: true, enabled: !disabled && current < pageCount, label: "Next page", action: { select(current + 1) }) { nextIcon() }
+            if paginationVariant == "pages" || paginationVariant == "controls" {
+                DoweIconButton(enabled: !disabled && current < pageCount, dimension: dimension, backgroundColor: backgroundColor, contentColor: contentColor, borderColor: borderColor, label: "Next page", action: { select(current + 1) }) { nextIcon() }
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(ariaLabel ?? "Pagination")
@@ -128,8 +152,65 @@ struct DowePagination<PreviousIcon: View, NextIcon: View>: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(selected ? borderColor ?? .clear : .clear, lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .disabled(!enabled)
-        .opacity(enabled ? 1 : 0.42)
+        .disabled(!enabled).opacity(enabled ? 1 : 0.42)
+        .accessibilityLabel(label)
+    }
+}
+
+struct DoweIconButton<Content: View>: View {
+    let enabled: Bool
+    let dimension: CGFloat
+    let backgroundColor: Color
+    let contentColor: Color
+    let borderColor: Color?
+    let label: String
+    let action: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        Button(action: action) {
+            content()
+                .frame(width: dimension, height: dimension)
+                .background(backgroundColor)
+                .foregroundStyle(contentColor)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(borderColor ?? .clear, lineWidth: borderColor == nil ? 0 : 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled).opacity(enabled ? 1 : 0.42)
+        .accessibilityLabel(label)
+    }
+}
+
+struct DowePaginationIndicator: View {
+    let active: Bool
+    let dot: Bool
+    let enabled: Bool
+    let size: String
+    let color: Color
+    let label: String
+    let action: () -> Void
+    var inactiveWidth: CGFloat? = nil
+    var activeWidth: CGFloat? = nil
+    var height: CGFloat? = nil
+    var dotSize: CGFloat? = nil
+    var dotActiveScale: CGFloat? = nil
+
+    private var resolvedInactiveWidth: CGFloat { inactiveWidth ?? (size == "lg" ? 40 : size == "xs" || size == "sm" ? 24 : 32) }
+    private var resolvedActiveWidth: CGFloat { activeWidth ?? (size == "lg" ? 64 : size == "xs" || size == "sm" ? 32 : 48) }
+    private var resolvedHeight: CGFloat { height ?? (size == "lg" ? 10 : size == "xs" || size == "sm" ? 6 : 8) }
+    private var resolvedDotSize: CGFloat { dotSize ?? 10 }
+    private var resolvedDotActiveScale: CGFloat { dotActiveScale ?? 1.25 }
+
+    var body: some View {
+        Button(action: action) {
+            Capsule()
+                .fill(color.opacity(active ? 1 : 0.28))
+                .frame(width: dot ? resolvedDotSize : active ? resolvedActiveWidth : resolvedInactiveWidth, height: dot ? resolvedDotSize : resolvedHeight)
+                .scaleEffect(dot && active ? resolvedDotActiveScale : 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled).opacity(enabled ? 1 : 0.42)
         .accessibilityLabel(label)
     }
 }
@@ -304,113 +385,6 @@ struct DoweCountdown: View {
     private func separatorOffset(for displaySize: String) -> CGFloat {
         displaySize == "xl" ? 28 : displaySize == "lg" ? 20 : displaySize == "sm" ? 8 : 12
     }
-}
-
-struct DoweMapMarker: Identifiable {
-    let id: String
-    let lat: String
-    let lng: String
-    let label: String?
-    let popup: String?
-    let icon: String
-    let action: (() -> Void)?
-}
-
-struct DoweMapWaypoint {
-    let lat: String
-    let lng: String
-}
-
-struct DoweMap: View {
-    let centerLat: String
-    let centerLng: String
-    let zoom: UInt16
-    let height: String
-    let width: String
-    let showControls: Bool
-    let showScale: Bool
-    let showLocationControl: Bool
-    let interactive: Bool
-    let markers: [DoweMapMarker]
-    let waypoints: [DoweMapWaypoint]
-    let backgroundColor: Color
-    let contentColor: Color
-    let onLocation: (() -> Void)?
-    let onLocationError: (() -> Void)?
-    let onRoute: (() -> Void)?
-
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                backgroundColor.opacity(0.18)
-                GridPattern().stroke(contentColor.opacity(0.16), lineWidth: 1)
-                if !waypoints.isEmpty {
-                    Capsule().fill(contentColor.opacity(0.6)).frame(width: proxy.size.width * 0.7, height: 4).rotationEffect(.degrees(-10))
-                }
-                ForEach(Array(markers.enumerated()), id: \.element.id) { index, marker in
-                    Button(action: { marker.action?() }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "mappin.circle.fill").font(.title2)
-                            if let label = marker.label ?? marker.popup {
-                                Text(label).font(.caption.weight(.semibold)).padding(.horizontal, 8).padding(.vertical, 2).background(.ultraThinMaterial).clipShape(Capsule())
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(marker.icon == "start" ? DoweDesign.success : marker.icon == "end" ? DoweDesign.danger : contentColor)
-                    .position(mapPoint(index: index, total: max(markers.count, 1), size: proxy.size))
-                }
-                if showControls {
-                    VStack(spacing: 0) { Text("+"); Divider(); Text("-") }
-                        .font(.headline.weight(.bold))
-                        .frame(width: 34)
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .position(x: proxy.size.width - 28, y: 46)
-                }
-                if showScale {
-                    Text("1 km").font(.caption.weight(.bold)).padding(6).background(.ultraThinMaterial).clipShape(Capsule()).position(x: 42, y: proxy.size.height - 24)
-                }
-                if showLocationControl {
-                    Button(action: { onLocation?() }) { Image(systemName: "location.fill") }
-                        .buttonStyle(.borderedProminent)
-                        .position(x: proxy.size.width - 28, y: proxy.size.height - 28)
-                }
-            }
-        }
-        .frame(height: doweMapHeight(height))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    private func mapPoint(index: Int, total: Int, size: CGSize) -> CGPoint {
-        let step = size.width / CGFloat(total + 1)
-        let x = min(max(step * CGFloat(index + 1), 36), size.width - 36)
-        let y = min(max(size.height * (0.3 + CGFloat((index * 23) % 46) / 100), 36), size.height - 36)
-        return CGPoint(x: x, y: y)
-    }
-}
-
-struct GridPattern: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let step: CGFloat = 32
-        stride(from: CGFloat(0), through: rect.width, by: step).forEach { x in
-            path.move(to: CGPoint(x: x, y: 0))
-            path.addLine(to: CGPoint(x: x, y: rect.height))
-        }
-        stride(from: CGFloat(0), through: rect.height, by: step).forEach { y in
-            path.move(to: CGPoint(x: 0, y: y))
-            path.addLine(to: CGPoint(x: rect.width, y: y))
-        }
-        return path
-    }
-}
-
-func doweMapHeight(_ value: String) -> CGFloat {
-    if value.hasSuffix("px") {
-        return CGFloat(Double(value.dropLast(2)) ?? 400)
-    }
-    return CGFloat(Double(value) ?? 400)
 }
 
 "#

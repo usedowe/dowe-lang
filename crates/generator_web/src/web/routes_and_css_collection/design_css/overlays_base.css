@@ -6,7 +6,7 @@
   display:var(--dowe-show,var(--dowe-component-display));
   align-items:center;
   justify-content:center;
-  padding:1rem;
+  padding:var(--dowe-feedback-panel-padding);
 }
 .modal-overlay {
   position:absolute;
@@ -19,7 +19,7 @@
   position:relative;
   display:flex;
   flex-direction:column;
-  max-width:min(95vw,36rem);
+  max-width:min(95vw,35rem);
   max-height:95vh;
   overflow:hidden;
   border-radius:var(--dowe-radius);
@@ -84,8 +84,8 @@
   z-index:9999;
   display:flex;
   align-items:center;
-  gap:.5rem;
-  padding:.5rem .75rem;
+  gap:var(--dowe-feedback-content-gap);
+  padding:var(--dowe-tooltip-padding-y) var(--dowe-tooltip-padding-x);
   border-radius:var(--dowe-radius);
   box-shadow:0 10px 24px rgba(15,23,42,.18);
   font-size:.875rem;
@@ -133,9 +133,9 @@
   z-index:70;
   display:var(--dowe-show,var(--dowe-component-display));
   align-items:center;
-  gap:.75rem;
+  gap:var(--dowe-feedback-content-gap);
   width:min(26rem,calc(100vw - 2rem));
-  padding:1rem;
+  padding:var(--dowe-feedback-panel-padding);
   border-radius:var(--dowe-radius);
   box-shadow:0 16px 44px rgba(15,23,42,.22);
 }

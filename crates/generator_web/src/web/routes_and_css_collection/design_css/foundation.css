@@ -138,6 +138,10 @@
     user-select: none;
     -webkit-user-select: none;
 }
+.button:focus-visible {
+    outline: var(--dowe-state-focus-ring-width, 2px) solid color-mix(in srgb, currentColor calc(var(--dowe-state-focus-ring-alpha, 0.24) * 100%), transparent);
+    outline-offset: 2px;
+}
 .button > [data-dowe-button-icon-start],
 .button > [data-dowe-button-icon-end] {
     display: inline-flex;
@@ -165,46 +169,6 @@
 }
 @keyframes dowe-swap-out { from { transform: rotate(0deg) scale(1); opacity: 1; } to { transform: rotate(90deg) scale(.7); opacity: 0; } }
 @keyframes dowe-swap-in { from { transform: rotate(-90deg) scale(.7); opacity: 0; } to { transform: rotate(0deg) scale(1); opacity: 1; } }
-.icon-button.button-xs {
-    width: 1.5rem;
-    height: 1.5rem;
-}
-.icon-button.button-sm {
-    width: 2rem;
-    height: 2rem;
-}
-.icon-button.button-md {
-    width: 2.5rem;
-    height: 2.5rem;
-}
-.icon-button.button-lg {
-    width: 3rem;
-    height: 3rem;
-}
-.icon-button.button-xl {
-    width: 3.5rem;
-    height: 3.5rem;
-}
-.icon-button.button-xs > [data-dowe-button-icon-start] > .svg {
-    width: 1rem;
-    height: 1rem;
-}
-.icon-button.button-sm > [data-dowe-button-icon-start] > .svg {
-    width: 1.25rem;
-    height: 1.25rem;
-}
-.icon-button.button-md > [data-dowe-button-icon-start] > .svg {
-    width: 1.5rem;
-    height: 1.5rem;
-}
-.icon-button.button-lg > [data-dowe-button-icon-start] > .svg {
-    width: 2rem;
-    height: 2rem;
-}
-.icon-button.button-xl > [data-dowe-button-icon-start] > .svg {
-    width: 2.5rem;
-    height: 2.5rem;
-}
 .control-icon {
     display: inline-flex;
     flex: 0 0 auto;

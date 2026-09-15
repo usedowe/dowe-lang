@@ -453,8 +453,10 @@ hide a visible mismatch.
 - Consecutive bands do not collapse into the same generic heading-plus-Card-grid composition.
 - Static fragments are extracted; unsupported dynamic reuse is recorded without invented syntax.
 - Reference pixels never enter project assets; missing originals remain explicit.
-- Component defaults are used before local `p*` props or gaps; no automatic gap on every Grid/Flex,
-  stacked Section/Grid/Card padding, or unsupported margin aliases such as `mt` remain.
+- Component defaults are used before local `p*` props or gaps. Landing Sections may use deliberate
+  padding overrides to shape band rhythm; dashboard and operational Sections omit `p*` props so
+  density stays with their inner owners. No automatic gap on every Grid/Flex, stacked
+  Section/Grid/Card padding, or unsupported margin aliases such as `mt` remain.
 - Every local prop has a recorded contract, behavior, accessibility, structural, non-default, or
   rendered-mismatch reason; supported-but-unnecessary props are removed.
 - Background media uses `cover` on its owner; foreground `Image` keeps an independent media role.

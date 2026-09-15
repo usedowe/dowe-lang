@@ -127,7 +127,7 @@ r#"
                     .foregroundStyle(contentColor.opacity(0.64))
             }
         }
-        .frame(maxWidth: chartType == "pie" || chartType == "arc" ? chartWidth : .infinity, minHeight: isCircularChart ? CGFloat(184) : CGFloat(252))
+        .frame(maxWidth: chartType == "pie" || chartType == "arc" ? chartWidth : .infinity, minHeight: isCircularChart ? CGFloat(224) : CGFloat(300))
         .aspectRatio(chartType == "pie" || chartType == "arc" ? CGFloat(1) : nil, contentMode: .fit)
         .shadow(color: showGlow || arcShowGlow ? contentColor.opacity(0.22) : .clear, radius: showGlow || arcShowGlow ? CGFloat(14) : .zero)
         .contentShape(Rectangle())
@@ -322,4 +322,3 @@ r#"
         func addArc(_ path: inout Path, radius: CGFloat, start: Double, end: Double) {
             if abs(end - start) >= 359.999 {
 "#
-

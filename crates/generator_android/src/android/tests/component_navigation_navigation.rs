@@ -242,6 +242,10 @@ fn generates_compose_and_dev_navigation_shell_components() {
         .expect("views");
 
     assert!(views.content.contains("DoweNavMenu("));
+    assert!(views.content.contains("paddingHorizontal = 16.dp, paddingVertical = 8.dp"));
+    assert!(views.content.contains("DoweNavMenu(modifier = "));
+    assert!(views.content.contains("gap = 8.dp"));
+    assert!(views.content.contains("Modifier.widthIn(min = 192.dp, max = 360.dp).heightIn(max = 360.dp)"));
     assert!(views
         .content
         .contains("openIndex = if (openIndex == index) null else index"));
@@ -370,5 +374,3 @@ fn generates_compose_and_dev_navigation_shell_components() {
     ));
     assert!(dev.content.contains("doweAdd(view2, view3);"));
 }
-
-

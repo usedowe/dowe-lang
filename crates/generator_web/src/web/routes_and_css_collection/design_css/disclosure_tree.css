@@ -71,7 +71,7 @@
   flex:1 1 auto;
   align-items:center;
   gap:.375rem;
-  padding:.125rem .5rem;
+  padding:.125rem .25rem;
   border:0;
   border-radius:calc(var(--dowe-radius) * .65);
   background:transparent;

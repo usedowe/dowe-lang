@@ -126,6 +126,7 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
     );
     assert!(page.css_content.contains(".chat-box"));
     assert!(page.css_content.contains(".empty"));
+    assert!(css.contains(".empty{--dowe-component-display:flex;display:var(--dowe-show,var(--dowe-component-display));flex-direction:column;align-items:center;justify-content:center;gap:var(--dowe-empty-gap);"));
     assert!(css.contains(".marquee"));
     assert!(css.contains(".chat-box-action"));
     assert!(css.contains(".chat-choice"));
@@ -237,3 +238,59 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     assert!(router.contains("function toggleCollapsible"));
 }
 
+#[test]
+fn renders_pagination_visual_variants_from_shared_contract() {
+    for (variant, indicator_class, has_navigation, has_counter) in [
+        (dowe_components::PaginationVariant::Pages, "pagination-page", true, false),
+        (dowe_components::PaginationVariant::Controls, "is-bar", true, true),
+        (dowe_components::PaginationVariant::Dots, "is-dot", false, false),
+        (dowe_components::PaginationVariant::Bars, "is-bar", false, false),
+    ] {
+        let pagination = ViewNode::ToggleGroup {
+            props: ToggleGroupProps {
+                style: VariantProps {
+                    variant: Some(ComponentVariant::Outlined),
+                    color: Some(ColorFamily::Primary),
+                    ..Default::default()
+                },
+                kind: ToggleGroupKind::Pagination,
+                pagination: Some(dowe_components::PaginationProps {
+                    total: dowe_components::PaginationTotal::Static(3),
+                    page_size: 1,
+                    variant,
+                }),
+                value: Some("page".to_string()),
+                selected: "1".to_string(),
+                multiple: false,
+                size: ButtonSize::Md,
+                wide: false,
+                vertical: false,
+                disabled: false,
+                aria_label: Some("Pages".to_string()),
+                on_change: Some("loadPage".to_string()),
+            },
+            items: (1..=3)
+                .map(|page| ToggleGroupItem {
+                    id: page.to_string(),
+                    label: page.to_string(),
+                    icon: None,
+                })
+                .collect(),
+        };
+        let html = render_page_body(&ViewNode::Children, &pagination);
+        assert!(html.contains(&format!(
+            r#"data-dowe-pagination-variant="{}""#,
+            variant.as_str()
+        )));
+        assert!(html.contains(indicator_class));
+        assert_eq!(html.contains("data-dowe-pagination-step"), has_navigation);
+        assert_eq!(html.contains("data-dowe-pagination-counter"), has_counter);
+        if variant == dowe_components::PaginationVariant::Controls {
+            assert!(html.contains("pagination-indicators is-bar"));
+            assert!(html.contains("button-sm"));
+            assert!(html.contains("icon-button"));
+            assert!(html.contains("rounded-full"));
+            assert!(html.contains("pagination-nav"));
+        }
+    }
+}

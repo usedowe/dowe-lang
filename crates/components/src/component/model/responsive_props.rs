@@ -146,28 +146,16 @@ impl SpacingProps {
 }
 
 pub fn section_content_spacing(spacing: &SpacingProps) -> SpacingProps {
-    spacing.with_padding_axis_defaults(
-        ResponsiveValue::ordered(vec![
-            ResponsiveEntry {
-                breakpoint: Breakpoint::Xs,
-                value: ScaleValue::from_half_steps(8),
-            },
-            ResponsiveEntry {
-                breakpoint: Breakpoint::Md,
-                value: ScaleValue::from_half_steps(12),
-            },
-        ]),
-        ResponsiveValue::ordered(vec![
-            ResponsiveEntry {
-                breakpoint: Breakpoint::Xs,
-                value: ScaleValue::from_half_steps(20),
-            },
-            ResponsiveEntry {
-                breakpoint: Breakpoint::Md,
-                value: ScaleValue::from_half_steps(32),
-            },
-        ]),
-    )
+    spacing.with_padding_default(ResponsiveValue::ordered(vec![
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Xs,
+            value: ScaleValue::from_half_steps(8),
+        },
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Lg,
+            value: ScaleValue::from_half_steps(10),
+        },
+    ]))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -221,9 +209,21 @@ pub struct ReactiveValue<T> {
 }
 
 impl<T> ReactiveValue<T> {
-    pub fn static_value(value: T) -> Self { Self { value, binding: None } }
-    pub fn bound(value: T, binding: PropBinding) -> Self { Self { value, binding: Some(binding) } }
-    pub fn is_dynamic(&self) -> bool { self.binding.is_some() }
+    pub fn static_value(value: T) -> Self {
+        Self {
+            value,
+            binding: None,
+        }
+    }
+    pub fn bound(value: T, binding: PropBinding) -> Self {
+        Self {
+            value,
+            binding: Some(binding),
+        }
+    }
+    pub fn is_dynamic(&self) -> bool {
+        self.binding.is_some()
+    }
 }
 
 impl<T> ResponsiveValue<T> {
@@ -254,11 +254,15 @@ pub struct ComponentProp {
 
 impl PropValue {
     pub fn binding(&self) -> Option<&PropBinding> {
-        match self { Self::Binding(binding) => Some(binding), _ => None }
+        match self {
+            Self::Binding(binding) => Some(binding),
+            _ => None,
+        }
     }
 
     pub fn binding_fallback(&self) -> Option<PropValue> {
-        self.binding().and_then(|binding| binding.fallback.as_deref().cloned())
+        self.binding()
+            .and_then(|binding| binding.fallback.as_deref().cloned())
     }
 }
 
@@ -280,7 +284,11 @@ pub struct PropBinding {
 
 impl PropBinding {
     pub fn new(path: impl Into<String>, kind: PropValueKind) -> Self {
-        Self { path: path.into(), kind, fallback: None }
+        Self {
+            path: path.into(),
+            kind,
+            fallback: None,
+        }
     }
 
     pub fn string(path: impl Into<String>) -> Self {
@@ -357,4 +365,3 @@ impl Breakpoint {
         }
     }
 }
-

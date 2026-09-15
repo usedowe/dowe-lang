@@ -82,6 +82,7 @@ private fun DoweInput(value: String, onValueChange: (String) -> Unit, modifier: 
         .clip(shape)
         .background(backgroundColor)
         .then(if (resolvedBorderColor == null) Modifier else Modifier.border(1.dp, resolvedBorderColor, shape))
+        .then(if (focused && validationError == null) Modifier.border(2.dp, contentColor.copy(alpha = 0.24f), shape) else Modifier)
         .padding(horizontal = horizontalPadding)
         .onFocusChanged { state -> focused = state.isFocused; if (state.isFocused) hadFocus = true else if (hadFocus) touched = true }
     Column {
@@ -251,6 +252,7 @@ private fun DoweComboBox(value: String, onValueChange: (String) -> Unit, bound: 
                     .clip(shape)
                     .background(backgroundColor)
                     .then(if (resolvedBorderColor == null) Modifier else Modifier.border(1.dp, resolvedBorderColor, shape))
+                    .alpha(if (disabled) 0.5f else 1f)
                     .clickable(enabled = !disabled) { expanded = true }
                     .padding(horizontal = horizontalPadding),
                 verticalAlignment = Alignment.CenterVertically,
@@ -271,11 +273,11 @@ private fun DoweComboBox(value: String, onValueChange: (String) -> Unit, bound: 
                     if (options.isEmpty()) Text(loadingText, modifier = Modifier.fillMaxWidth().padding(16.dp), color = DoweDesign.surfaceText.copy(alpha = 0.68f), textAlign = TextAlign.Center)
                     else if (filtered.isEmpty()) Text(emptyText, modifier = Modifier.fillMaxWidth().padding(16.dp), color = DoweDesign.surfaceText.copy(alpha = 0.68f), textAlign = TextAlign.Center)
                     else filtered.forEach { option ->
-                        Row(modifier = Modifier.fillMaxWidth().background(if (option.value == selectedValue) contentColor.copy(alpha = 0.1f) else Color.Transparent).clickable(enabled = !option.disabled) { localValue = option.value; onValueChange(option.value); expanded = false; query = ""; touched = true }.padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp).background(if (option.value == selectedValue) contentColor.copy(alpha = 0.1f) else Color.Transparent).clickable(enabled = !option.disabled) { localValue = option.value; onValueChange(option.value); expanded = false; query = ""; touched = true }.padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             option.icon?.invoke()
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = option.label, fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.SemiBold, color = DoweDesign.surfaceText.copy(alpha = if (option.disabled) 0.45f else 1f), fontFamily = fontFamily)
-                                if (option.description != null) Text(text = option.description, fontSize = 12.sp, color = DoweDesign.surfaceText.copy(alpha = if (option.disabled) 0.35f else 0.68f), fontFamily = fontFamily)
+                                Text(text = option.label, fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.SemiBold, color = DoweDesign.surfaceText.copy(alpha = if (option.disabled) 0.5f else 1f), fontFamily = fontFamily)
+                                if (option.description != null) Text(text = option.description, fontSize = 12.sp, color = DoweDesign.surfaceText.copy(alpha = if (option.disabled) 0.5f else 0.68f), fontFamily = fontFamily)
                             }
                         }
                     }
@@ -289,4 +291,3 @@ private fun DoweComboBox(value: String, onValueChange: (String) -> Unit, bound: 
 @Composable
 private fun DoweCsvField(label: String?, buttonText: String, modalTitle: String, instructions: String, columns: List<DoweCsvColumn>, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
 "#
-

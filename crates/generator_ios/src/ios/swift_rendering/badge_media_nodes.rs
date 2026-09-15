@@ -10,11 +10,15 @@ fn render_swift_badge(
 ) {
     let pad = " ".repeat(indent);
     output.push_str(&format!(
-        "{pad}DoweBadge(text: {}, position: {}, backgroundColor: {}, contentColor: {}) {{\n",
+        "{pad}DoweBadge(text: {}, position: {}, backgroundColor: {}, contentColor: {}, fontSize: CGFloat({}), height: CGFloat({}), horizontalPadding: CGFloat({}), verticalPadding: CGFloat({})) {{\n",
         swift_string_literal(&props.text),
         swift_string_literal(props.position.as_str()),
         variant_container(&props.style),
         variant_content(&props.style),
+        dowe_components::BadgeVisualContract::standard().font_size,
+        dowe_components::BadgeVisualContract::standard().height,
+        dowe_components::BadgeVisualContract::standard().horizontal_padding,
+        dowe_components::BadgeVisualContract::standard().vertical_padding,
     ));
     for child in children {
         render_swift_node_in_flow(
@@ -46,6 +50,7 @@ fn render_swift_chip(
 ) {
     let pad = " ".repeat(indent);
     let size = props.style.size.unwrap_or(ButtonSize::Md);
+    let visual = ChipVisualContract::for_size(size);
     let radius = swift_control_radius(&props.style.style);
     let base_border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
@@ -62,9 +67,14 @@ fn render_swift_chip(
         .map(|value| format!("Optional({value})"))
         .unwrap_or_else(|| "nil".to_string());
     output.push_str(&format!(
-        "{pad}DoweChip(text: {}, size: {}, backgroundColor: {}, contentColor: {}, borderColor: {border}, borderWidth: {border_width}, radius: {radius}, shadow: {shadow}, action: {}, hasStart: {}, hasEnd: {}) {{\n",
+        "{pad}DoweChip(text: {}, size: {}, height: CGFloat({}), horizontalPadding: CGFloat({}), textSize: CGFloat({}), contentGap: CGFloat({}), closeAlpha: CGFloat({}), backgroundColor: {}, contentColor: {}, borderColor: {border}, borderWidth: {border_width}, radius: {radius}, shadow: {shadow}, action: {}, hasStart: {}, hasEnd: {}) {{\n",
         swift_string_literal(value),
         swift_string_literal(size.as_str()),
+        visual.height,
+        visual.horizontal_padding,
+        visual.text_size,
+        visual.content_gap,
+        visual.close_alpha,
         variant_container(&props.style),
         variant_content(&props.style),
         swift_optional_component_action(props.on_close.as_deref(), None, context),
@@ -109,10 +119,12 @@ fn render_swift_skeleton(
     flow: NativeFlow,
 ) {
     let pad = " ".repeat(indent);
+    let visual = dowe_components::SkeletonVisualContract::standard();
     output.push_str(&format!(
-        "{pad}DoweSkeleton(variant: {}, animation: {})\n",
+        "{pad}DoweSkeleton(variant: {}, animation: {}, textHeight: CGFloat({}), defaultRadius: CGFloat({}), pulseAlpha: CGFloat({}), pulseDurationMs: Double({}))\n",
         swift_string_literal(props.variant.as_str()),
         swift_string_literal(props.animation.as_str())
+        , visual.text_height, visual.default_radius, visual.pulse_alpha, visual.pulse_duration_ms
     ));
     append_swift_modifiers(
         output,
@@ -288,79 +300,6 @@ fn render_swift_accordion(
         render_swift_button_icon(&arrow, content_color, indent + 8, output);
         output.push_str(&format!("{pad}    }}) {{\n"));
         for child in &item.children {
-            render_swift_node_in_flow(
-                child,
-                indent + 8,
-                output,
-                flow,
-                inherited_font,
-                default_family,
-                context,
-            );
-        }
-        output.push_str(&format!("{pad}    }}\n"));
-    }
-    output.push_str(&format!("{pad}}}\n"));
-    append_swift_modifiers(
-        output,
-        indent,
-        &swift_modifiers_for_style(&props.style.style),
-    );
-}
-
-fn render_swift_carousel(
-    props: &CarouselProps,
-    slides: &[CarouselSlide],
-    indent: usize,
-    output: &mut String,
-    flow: NativeFlow,
-    inherited_font: Option<&ResponsiveValue<FontFamily>>,
-    default_family: FontFamily,
-    context: &SwiftReactiveContext,
-) {
-    let pad = " ".repeat(indent);
-    let slide_ids = format!(
-        "[{}]",
-        slides
-            .iter()
-            .map(|slide| swift_string_literal(&slide.id))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-    output.push_str(&format!(
-        "{pad}DoweCarouselView(variant: {}, slideIds: {}, autoplay: {}, autoplayInterval: {}, disableLoop: {}, hideControls: {}, hideIndicators: {}, showNavigation: {}, showCounter: {}, orientation: {}, size: {}, indicatorType: {}, title: {}, slideWidth: {}, slideHeight: {}, slidesPerView: {}, gap: {}, accentColor: {}) {{\n",
-        swift_string_literal(props.variant.as_str()),
-        slide_ids,
-        props.autoplay,
-        props.autoplay_interval,
-        props.disable_loop,
-        props.hide_controls,
-        props.hide_indicators,
-        props.show_navigation,
-        props.show_counter,
-        swift_string_literal(props.orientation.as_str()),
-        swift_string_literal(props.size.as_str()),
-        swift_string_literal(props.indicator_type.as_str()),
-        swift_optional_literal(props.title.as_deref()),
-        swift_optional_u16(props.slide_width),
-        swift_optional_u16(props.slide_height),
-        props.slides_per_view,
-        props.gap,
-        swift_scheme_color(&props.style),
-    ));
-    for (index, slide) in slides.iter().enumerate() {
-        output.push_str(&format!(
-            "{pad}    DoweCarouselSlideView(id: {}, variant: {}, index: {}, orientation: {}, slideWidth: {}, slideHeight: {}, slidesPerView: {}, gap: {}) {{\n",
-            swift_string_literal(&slide.id),
-            swift_string_literal(props.variant.as_str()),
-            index,
-            swift_string_literal(props.orientation.as_str()),
-            swift_optional_u16(props.slide_width),
-            swift_optional_u16(props.slide_height),
-            props.slides_per_view,
-            props.gap,
-        ));
-        for child in &slide.children {
             render_swift_node_in_flow(
                 child,
                 indent + 8,

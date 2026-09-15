@@ -76,9 +76,9 @@ struct DoweComboPopover: View {
                 .background(contentColor.opacity(0.07))
                 .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
             if options.isEmpty {
-                Text(loadingText).font(.footnote).foregroundStyle(contentColor.opacity(0.65)).frame(maxWidth: .infinity).padding(CGFloat(12))
+                Text(loadingText).font(.footnote).foregroundStyle(contentColor.opacity(0.68)).frame(maxWidth: .infinity).padding(CGFloat(16))
             } else if filteredOptions.isEmpty {
-                Text(emptyText).font(.footnote).foregroundStyle(contentColor.opacity(0.65)).frame(maxWidth: .infinity).padding(CGFloat(12))
+                Text(emptyText).font(.footnote).foregroundStyle(contentColor.opacity(0.68)).frame(maxWidth: .infinity).padding(CGFloat(16))
             } else {
                 ForEach(filteredOptions) { option in
                     Button(action: { onSelect(option) }) {
@@ -88,12 +88,12 @@ struct DoweComboPopover: View {
                             }
                             VStack(alignment: .leading, spacing: CGFloat(3)) {
                                 Text(option.label).fontWeight(.semibold)
-                                if let description = option.description { Text(description).font(.caption).foregroundStyle(contentColor.opacity(option.disabled ? 0.35 : 0.68)) }
+                                if let description = option.description { Text(description).font(.caption).foregroundStyle(contentColor.opacity(option.disabled ? 0.5 : 0.68)) }
                             }
                             .font(font)
                             Spacer(minLength: 0)
                         }
-                        .foregroundStyle(contentColor.opacity(option.disabled ? 0.45 : 1))
+                        .foregroundStyle(contentColor.opacity(option.disabled ? 0.5 : 1))
                         .padding(.horizontal, CGFloat(12))
                         .padding(.vertical, CGFloat(9))
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -164,7 +164,7 @@ struct DoweComboBox: View {
             .clipShape(RoundedRectangle(cornerRadius: radius))
             .overlay(RoundedRectangle(cornerRadius: radius).stroke(validationError == nil ? (borderColor ?? Color.clear) : DoweDesign.danger, lineWidth: validationError == nil && borderColor == nil ? CGFloat(0) : CGFloat(1)))
             .contentShape(Rectangle())
-            .opacity(disabled ? 0.56 : 1)
+            .opacity(disabled ? 0.5 : 1)
             .onTapGesture { if !disabled { expanded.toggle() } }
             .background(DoweComboAnchorPresenter(isPresented: expanded, options: options, selectedValue: selectedValue, searchPlaceholder: searchPlaceholder, emptyText: emptyText, loadingText: loadingText, query: $query, font: font, fontSize: fontSize, lineHeight: lineHeight, contentColor: contentColor, radius: radius, onSelect: { option in setValue(option.value); expanded = false; query = ""; touched = true }, onDismiss: { expanded = false; query = ""; touched = true }))
             DoweValidationFeedback(helpText: helpText, error: validationError, contentColor: contentColor)

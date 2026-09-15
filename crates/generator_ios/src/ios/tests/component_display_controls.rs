@@ -105,6 +105,7 @@ fn generates_swiftui_rich_control_map_components() {
     assert!(views.contains("ISO8601DateFormatter().date(from: target) ?? .distantPast"));
     assert!(views.contains("DoweMap(centerLat: \"4.7109\", centerLng: \"-74.0721\""));
     assert!(views.contains("DoweMapMarker(id: \"office\""));
+    assert!(views.contains("Rectangle().fill(contentColor.opacity(0.12)).frame(width: CGFloat(34), height: CGFloat(1))"));
 }
 
 #[test]

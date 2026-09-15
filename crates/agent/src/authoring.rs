@@ -315,6 +315,62 @@ fn skill_records() -> &'static [SkillRecord] {
                     )),
                 },
                 SkillResource {
+                    path: "references/blocks/hero-editorial.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/blocks/hero-editorial.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/blocks/proof-metrics.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/blocks/proof-metrics.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/blocks/split-media.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/blocks/split-media.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/blocks/opportunity-band.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/blocks/opportunity-band.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/blocks/growth-ladder.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/blocks/growth-ladder.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/blocks/media-cta.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/blocks/media-cta.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/blocks/faq-editorial.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/blocks/faq-editorial.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/blocks/contact-panel.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/blocks/contact-panel.md"
+                    )),
+                },
+                SkillResource {
                     path: "references/reference-ui.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),

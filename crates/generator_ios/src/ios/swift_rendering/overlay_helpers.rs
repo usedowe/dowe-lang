@@ -60,11 +60,12 @@ fn render_swift_alert_dialog(
     context: &SwiftReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let visual = dowe_components::AlertVisualContract::standard();
     let path = escape_swift(&context.signal_path(&props.open));
     let mut panel_style = props.style.clone();
     panel_style.color = Some(ColorFamily::Surface);
     output.push_str(&format!(
-        "{pad}DoweAlertDialog(open: state.bool(\"{path}\"), close: {}, title: {}, description: {}, confirmText: {}, cancelText: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, confirmBackgroundColor: {}, confirmContentColor: {}, radius: {}, loading: {}, confirm: {})\n",
+        "{pad}DoweAlertDialog(open: state.bool(\"{path}\"), close: {}, title: {}, description: {}, confirmText: {}, cancelText: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, confirmBackgroundColor: {}, confirmContentColor: {}, radius: {}, panelPadding: CGFloat({}), contentGap: CGFloat({}), titleSize: CGFloat({}), descriptionSize: CGFloat({}), buttonGap: CGFloat({}), loading: {}, confirm: {})\n",
         swift_close_action(&path, props.on_cancel.as_deref(), context),
         swift_string_literal(&props.title),
         swift_string_literal(&props.description),
@@ -76,6 +77,11 @@ fn render_swift_alert_dialog(
         color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Danger))),
         color_ref(family_text_color(props.style.color.unwrap_or(ColorFamily::Danger))),
         swift_card_radius(&props.style.style),
+        visual.panel_padding,
+        visual.content_gap,
+        visual.title_size,
+        visual.description_size,
+        visual.button_gap,
         props.loading,
         swift_optional_component_action(props.on_confirm.as_deref(), None, context),
     ));

@@ -275,8 +275,9 @@ fn render_swift_empty(
 ) {
     let pad = " ".repeat(indent);
     let icon = empty_icon(props.kind).expect("bundled Empty icon");
+    let visual = dowe_components::EmptyVisualContract::standard();
     output.push_str(&format!(
-        "{pad}DoweEmpty(kind: {}, title: {}, description: {}, actionLabel: {}, action: {}, iconViewBox: {}, iconPaths: {}, backgroundColor: {}, contentColor: {}, accentColor: {})\n",
+        "{pad}DoweEmpty(kind: {}, title: {}, description: {}, actionLabel: {}, action: {}, iconViewBox: {}, iconPaths: {}, backgroundColor: {}, contentColor: {}, accentColor: {}, panelPadding: CGFloat({}), contentGap: CGFloat({}), iconSize: CGFloat({}), titleSize: CGFloat({}), descriptionSize: CGFloat({}), actionHorizontalPadding: CGFloat({}), actionVerticalPadding: CGFloat({}))\n",
         swift_string_literal(props.kind.as_str()),
         swift_optional_literal(props.title.as_deref()),
         swift_optional_literal(props.description.as_deref()),
@@ -291,6 +292,13 @@ fn render_swift_empty(
         card_variant_container(&props.style),
         card_variant_content(&props.style),
         color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Primary))),
+        visual.panel_padding,
+        visual.content_gap,
+        visual.icon_size,
+        visual.title_size,
+        visual.description_size,
+        visual.action_horizontal_padding,
+        visual.action_vertical_padding,
     ));
     append_swift_modifiers(
         output,
@@ -439,7 +447,7 @@ fn render_swift_toggle_group(
         })
         .unwrap_or_else(|| format!(".constant({})", swift_string_literal(&props.selected)));
     output.push_str(&format!(
-        "{pad}DoweToggleGroup(value: {binding}, items: {}, size: {}, wide: {}, vertical: {}, disabled: {}, ariaLabel: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, onChange: {})\n",
+        "{pad}DoweToggleGroup(value: {binding}, items: {}, size: {}, wide: {}, vertical: {}, disabled: {}, ariaLabel: {}, backgroundColor: {}, contentColor: {}, accentColor: {}, borderColor: {}, onChange: {})\n",
         swift_toggle_group_items(items),
         swift_string_literal(props.size.as_str()),
         props.wide,
@@ -448,6 +456,7 @@ fn render_swift_toggle_group(
         swift_optional_literal(props.aria_label.as_deref()),
         card_variant_container(&props.style),
         card_variant_content(&props.style),
+        swift_scheme_color(&props.style),
         swift_variant_border(&props.style),
         swift_optional_component_action(props.on_change.as_deref(), None, context),
     ));

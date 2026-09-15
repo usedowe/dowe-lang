@@ -62,7 +62,7 @@ struct DoweOverlayItem<Icon: View>: View {
             .padding(.horizontal, CGFloat(12))
             .padding(.vertical, CGFloat(8))
             .background(backgroundColor.opacity(action == nil ? 0 : 0.08))
-            .foregroundStyle(contentColor.opacity(disabled ? 0.48 : 1))
+            .foregroundStyle(contentColor.opacity(disabled ? 0.5 : 1))
             .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
         }
         .disabled(disabled || action == nil)
@@ -111,7 +111,9 @@ struct DoweCommand<Content: View>: View {
                     .onTapGesture(perform: close)
                 VStack(alignment: .leading, spacing: CGFloat(10)) {
                     Text(placeholder).opacity(0.56)
-                    Divider()
+                    Rectangle()
+                        .fill(contentColor.opacity(0.12))
+                        .frame(height: CGFloat(1))
                     content
                     if showFooter {
                         HStack {

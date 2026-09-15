@@ -117,7 +117,7 @@ fn render_dev_android_tabs(
             dev_localized_literal(&tab.label, tab.i18n.as_deref())
         };
         output.push_str(&format!(
-            "        TextView {button} = doweText({}, {}, 16f, 500, 0f, 1.25f, {font});\n        {button}.setGravity(Gravity.CENTER);\n        {button}.setPadding(doweDp(16), doweDp(6), doweDp(16), doweDp(6));\n        {button}.setTextColor({});\n        {button}.setBackground({});\n",
+            "        TextView {button} = doweText({}, {}, 16f, 500, 0f, 1.25f, {font});\n        {button}.setGravity(Gravity.CENTER);\n        {button}.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        {button}.setTextColor({});\n        {button}.setBackground({});\n",
             label,
             if index == 0 { active_content } else { inactive_content },
             if index == 0 { active_content } else { inactive_content },

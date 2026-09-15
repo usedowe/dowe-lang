@@ -1,0 +1,30 @@
+component GrowthLadder
+  Section id:"growth" background:"meadow" boxed:true
+    Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:14 } align:"center"
+      Flex direction:"column" align:"start" gap:4 maxW:"xl"
+        Text spacing:"widest"
+          "UNA ECONOMÍA CON PROPÓSITO"
+        Title size:"5xl"
+          "Crecimiento impulsado por utilidad."
+        Text
+          "Cada producto genera demanda real y construye una economía circular para el largo plazo."
+        Button href:"#ecosystem" variant:"ghost" scheme:"secondary"
+          "Cómo funciona"
+      Grid columns:1 gap:3
+        Svg viewBox:"0 0 600 240" w:"full" h:48
+          Path d:"M20 210H120V160H20Z" fill:"muted"
+          Path d:"M140 210H240V132H140Z" fill:"muted"
+          Path d:"M260 210H360V98H260Z" fill:"secondary"
+          Path d:"M380 210H480V58H380Z" fill:"secondary"
+          Path d:"M500 210H580V20H500Z" fill:"primary"
+        Grid columns:5 gap:2
+          Text size:"sm" align:"center"
+            "Usuarios"
+          Text size:"sm" align:"center"
+            "Productos"
+          Text size:"sm" align:"center"
+            "Transacciones"
+          Text size:"sm" align:"center"
+            "Adopción"
+          Text size:"sm" align:"center"
+            "Valor"

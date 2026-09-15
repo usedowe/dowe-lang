@@ -22,6 +22,7 @@ fn lowers_pagination_to_reactive_page_control() {
     assert_eq!(items[4].id, "5");
 }
 
+
 #[test]
 fn lowers_runtime_pagination_total_signal() {
     let tree = parse_page(
@@ -43,6 +44,7 @@ fn lowers_runtime_pagination_total_signal() {
     let Some(dowe_components::PaginationProps {
         total: dowe_components::PaginationTotal::Signal(total),
         page_size,
+        ..
     }) = props.pagination.as_ref()
     else {
         panic!("runtime pagination props");
@@ -50,6 +52,76 @@ fn lowers_runtime_pagination_total_signal() {
     assert_eq!(total, "total");
     assert_eq!(*page_size, 60);
     assert_eq!(items.len(), 25);
+}
+
+#[test]
+fn lowers_pagination_visual_variants_and_aliases() {
+    for (source_value, expected) in [
+        (
+            "paginationVariant:\"controls\"",
+            dowe_components::PaginationVariant::Controls,
+        ),
+        (
+            "paginationVariant:\"dots\"",
+            dowe_components::PaginationVariant::Dots,
+        ),
+        (
+            "paginationVariant:\"bars\"",
+            dowe_components::PaginationVariant::Bars,
+        ),
+        ("variant:\"dots\"", dowe_components::PaginationVariant::Dots),
+    ] {
+        let source = format!(
+            "page catalogPage\n  signal page value:1\n  fn loadCatalog\n    reset page\n  Pagination bind:page total:30 pageSize:10 onChange:loadCatalog {source_value}"
+        );
+        let tree = parse_page(&source).expect("pagination variant");
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::ToggleGroup { props, .. } = &children[0] else {
+            panic!("pagination toggle group");
+        };
+        assert_eq!(
+            props
+                .pagination
+                .as_ref()
+                .map(|pagination| pagination.variant),
+            Some(expected)
+        );
+    }
+
+    let invalid = parse_page(
+        r#"page catalogPage
+  signal page value:1
+  fn loadCatalog
+    reset page
+  Pagination bind:page total:30 pageSize:10 onChange:loadCatalog paginationVariant:"wheel""#,
+    )
+    .expect_err("invalid pagination variant");
+    assert!(
+        invalid
+            .to_string()
+            .contains("paginationVariant must be pages, controls, dots or bars")
+    );
+
+    let explicit_style = parse_page(
+        r#"page catalogPage
+  signal page value:1
+  fn loadCatalog
+    reset page
+  Pagination bind:page total:30 pageSize:10 onChange:loadCatalog paginationVariant:"controls" variant:"outlined""#,
+    )
+    .expect("explicit pagination variant keeps control style");
+    let ViewNode::Scope { children, .. } = explicit_style else {
+        panic!("scope");
+    };
+    let ViewNode::ToggleGroup { props, .. } = &children[0] else {
+        panic!("pagination toggle group");
+    };
+    assert_eq!(
+        props.style.variant,
+        Some(dowe_components::ComponentVariant::Outlined)
+    );
 }
 
 #[test]

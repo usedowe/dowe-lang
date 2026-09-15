@@ -1,3 +1,11 @@
+function carouselUsesSnap(root) {
+  const configured = root?.dataset?.doweCarouselSnap;
+  if (configured !== undefined) return configured === "true";
+  return !["simple", "masonry", "rtl", "sticky"].includes(
+    root?.dataset?.doweCarouselVariant
+  );
+}
+
 document.addEventListener("click", event => {
   const target = event.target;
   if (!target || !target.closest) return;
@@ -337,9 +345,7 @@ document.addEventListener(
       touch = event.touches?.[0];
     if (!viewport || !state || !touch) return;
     const root = viewport.closest("[data-dowe-carousel]"),
-      freeScroll = ["simple", "masonry", "rtl", "sticky"].includes(
-        root?.dataset.doweCarouselVariant
-      ),
+      freeScroll = !carouselUsesSnap(root),
       vertical =
         root?.dataset.doweCarouselOrientation === "vertical",
       primaryDelta = vertical
@@ -377,11 +383,7 @@ document.addEventListener(
         Math.max(500, Number(root.dataset.doweCarouselInterval || 3000));
       if (state?.axis === "primary" && Math.abs(state.primaryDelta) >= 3) {
         syncCarousel(root);
-        if (
-          !["simple", "masonry", "rtl", "sticky"].includes(
-            root.dataset.doweCarouselVariant
-          )
-        )
+        if (carouselUsesSnap(root))
           goToCarousel(root, Number(root.dataset.doweCarouselIndex || 0));
       }
     }

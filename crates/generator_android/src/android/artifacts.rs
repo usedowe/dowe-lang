@@ -24,6 +24,7 @@ use dowe_components::{
     TableSize, TabsProps, TabsVariant, TextAlign, TextProps, TextSize, TextSpacing, TextWeight,
     ThemeSelectProps, ThemeToggleProps, ToastProps, ToggleGroupItem, ToggleGroupKind,
     ToggleGroupProps, ToggleProps, TooltipProps, TranslationCatalog, TypeWriterItem,
+    PaginationControlContract, PaginationVariant, ChipVisualContract,
     TypeWriterProps, VariantProps, ViewAction, ViewActionKind, ViewAnimation, ViewConstant,
     ViewForm, ViewFormFieldKind, ViewGesture, ViewNode, ViewRequestAction, ViewRoute, ViewSignal,
     ViewSignalValue, ViewTransition, VisibilityCondition, collect_route_font_families,

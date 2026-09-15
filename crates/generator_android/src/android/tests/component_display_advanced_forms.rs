@@ -231,6 +231,7 @@ fn generates_compose_advanced_form_components() {
     assert!(phone.contains("DoweSvg(viewBox = selected.viewBox"));
     assert!(phone.contains("Modifier.size(24.dp).align(Alignment.CenterVertically)"));
     assert!(phone.contains("modifier = Modifier.align(Alignment.CenterVertically)"));
+    assert!(phone.contains(".width(1.dp)\n                        .height(24.dp)\n                        .background(contentColor.copy(alpha = 0.22f))"));
     assert!(phone.contains("minWidth = 280.dp, maxWidth = 384.dp, maxHeight = 380.dp"));
     assert!(phone.contains("Text(item.name, modifier = Modifier.weight(1f)"));
     assert!(phone.contains("Text(\"+${item.dialCode}\", fontWeight = FontWeight.Bold"));

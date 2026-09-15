@@ -16,11 +16,9 @@ fn generates_ios_app_metadata() {
         .expect("plist");
 
     assert!(plist.content.contains("<string>Clinic Desk</string>"));
-    assert!(
-        plist
-            .content
-            .contains("<string>com.example.clinic</string>")
-    );
+    assert!(plist
+        .content
+        .contains("<string>com.example.clinic</string>"));
     assert!(plist.content.contains("<key>CFBundleName</key>"));
 }
 
@@ -62,7 +60,7 @@ fn generates_swiftui_section_backgrounds() {
 
     assert!(views.contains("enum DoweSectionBackground"));
     assert!(views.contains("DoweSectionBackgroundView(background: background)"));
-    assert!(views.contains(".padding(EdgeInsets(top: doweResponsive(viewportWidth, xs: CGFloat(40), md: CGFloat(64)) ?? CGFloat(0), leading: doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(24)) ?? CGFloat(0), bottom: doweResponsive(viewportWidth, xs: CGFloat(40), md: CGFloat(64)) ?? CGFloat(0), trailing: doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(24)) ?? CGFloat(0)))"));
+    assert!(views.contains(".padding(EdgeInsets(top: doweResponsive(viewportWidth, xs: CGFloat(16), lg: CGFloat(20)) ?? CGFloat(0), leading: doweResponsive(viewportWidth, xs: CGFloat(16), lg: CGFloat(20)) ?? CGFloat(0), bottom: doweResponsive(viewportWidth, xs: CGFloat(16), lg: CGFloat(20)) ?? CGFloat(0), trailing: doweResponsive(viewportWidth, xs: CGFloat(16), lg: CGFloat(20)) ?? CGFloat(0)))"));
     let section = &views[views
         .find("doweResponsive(viewportWidth, xs: DoweSectionBackground.aurora")
         .expect("section")..];
@@ -78,7 +76,9 @@ fn generates_swiftui_section_backgrounds() {
     assert!(padding < max_width);
     assert!(max_width < centered);
     assert!(views.contains("doweResponsive(viewportWidth, xs: DoweSectionBackground.aurora, md: DoweSectionBackground.ocean)"));
-    assert!(views.contains("LinearGradient(colors: [DoweDesign.primary, DoweDesign.secondary, DoweDesign.accent]"));
+    assert!(views.contains(
+        "LinearGradient(colors: [DoweDesign.primary, DoweDesign.secondary, DoweDesign.accent]"
+    ));
     assert!(views.contains("DoweCoverImage(source:"));
     assert!(views.contains("https://example.com/hero.jpg"));
     assert!(views.contains("DoweOverlay.color(Color.black.opacity(0.35))"));
@@ -316,4 +316,3 @@ fn generates_native_ios_translation_resources() {
     assert!(plist.content.contains("CFBundleDevelopmentRegion"));
     assert!(plist.content.contains("<string>en</string>"));
 }
-

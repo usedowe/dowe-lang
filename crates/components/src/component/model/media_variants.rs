@@ -185,6 +185,17 @@ impl CarouselVariant {
         }
     }
 
+    pub fn uses_snap(self) -> bool {
+        !matches!(
+            self,
+            Self::Simple | Self::Masonry | Self::Rtl | Self::Sticky
+        )
+    }
+
+    pub fn is_free_scroll(self) -> bool {
+        !self.uses_snap()
+    }
+
     pub fn all() -> &'static [Self] {
         &[
             Self::Simple,
@@ -261,4 +272,3 @@ impl VideoAspect {
         &[Self::Horizontal, Self::Vertical, Self::Square]
     }
 }
-

@@ -222,9 +222,44 @@ fn render_compose_carousel(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let control = props.control_contract();
+    let geometry = props.geometry_contract();
+    let geometry_literal = format!(
+        "DoweCarouselGeometry(contentGap = {}, viewportPadding = {}, verticalViewportHeight = {}, slideFractionPercent = {}, slideMaxWidth = {})",
+        geometry.content_gap, geometry.viewport_padding, geometry.vertical_viewport_height,
+        geometry.slide_fraction_percent, compose_optional_u16(geometry.slide_max_width),
+    );
+    let control_literal = format!(
+        "DoweCarouselControlContract(navigationSize = {}, navigationInset = {}, controlSize = {}, controlGap = {}, indicatorGap = {}, indicatorHeight = {}, indicatorInactiveWidth = {}, indicatorActiveWidth = {}, indicatorDotSize = {}, indicatorDotActiveScalePercent = {})",
+        control.navigation_size,
+        control.navigation_inset,
+        control.control_size,
+        control.control_gap,
+        control.indicator_gap,
+        control.indicator_height,
+        control.indicator_inactive_width,
+        control.indicator_active_width,
+        control.indicator_dot_size,
+        control.indicator_dot_active_scale_percent,
+    );
+    let previous_icon_name = if props.orientation == CarouselOrientation::Vertical {
+        "arrow-up"
+    } else {
+        "arrow-left"
+    };
+    let next_icon_name = if props.orientation == CarouselOrientation::Vertical {
+        "arrow-down"
+    } else {
+        "arrow-right"
+    };
+    let previous = solar_control_icon(previous_icon_name).expect("bundled Carousel previous icon");
+    let next = solar_control_icon(next_icon_name).expect("bundled Carousel next icon");
     output.push_str(&format!(
-        "{pad}DoweCarousel(variant = {}, slides = listOf(\n",
+        "{pad}DoweCarousel(variant = {}, snap = {}, control = {}, geometry = {}, slides = listOf(\n",
         compose_string_literal(props.variant.as_str()),
+        props.variant.uses_snap(),
+        control_literal,
+        geometry_literal,
     ));
     for (index, slide) in slides.iter().enumerate() {
         output.push_str(&format!(
@@ -248,7 +283,7 @@ fn render_compose_carousel(
         ));
     }
     output.push_str(&format!(
-        "{pad}), autoplay = {}, autoplayInterval = {}, disableLoop = {}, hideControls = {}, hideIndicators = {}, showNavigation = {}, showCounter = {}, orientation = {}, size = {}, indicatorType = {}, title = {}, slideWidth = {}, slideHeight = {}, slidesPerView = {}, gap = {}, modifier = {}, accentColor = {})\n",
+        "{pad}), autoplay = {}, autoplayInterval = {}, disableLoop = {}, hideControls = {}, hideIndicators = {}, showNavigation = {}, showCounter = {}, orientation = {}, size = {}, indicatorType = {}, title = {}, slideWidth = {}, slideHeight = {}, slidesPerView = {}, gap = {}, previousIcon = {{\n",
         props.autoplay,
         props.autoplay_interval,
         props.disable_loop,
@@ -264,8 +299,15 @@ fn render_compose_carousel(
         compose_optional_u16(props.slide_height),
         props.slides_per_view,
         props.gap,
+    ));
+    render_compose_side_icon(&previous, indent + 4, output);
+    output.push_str(&format!(
+        "{pad}}}, nextIcon = {{\n"
+    ));
+    render_compose_side_icon(&next, indent + 4, output);
+    output.push_str(&format!(
+        "{pad}}}, modifier = {}, accentColor = {})\n",
         modifier_for_style(&props.style.style),
         compose_scheme_color(&props.style),
     ));
 }
-

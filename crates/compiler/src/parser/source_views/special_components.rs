@@ -6,6 +6,31 @@ fn lower_pagination_node(node: &SourceNode) -> DoweResult<ViewNode> {
         .ok_or_else(|| node_error(node, "missing `total`"))?;
     let page_size = required_prop_number(node, "pageSize")?;
     let _on_change = required_prop_bareword(node, "onChange")?;
+    let mut pagination_variant = dowe_components::PaginationVariant::Pages;
+    let mut explicit_pagination_variant = false;
+    if let Some(prop) = node.prop("paginationVariant") {
+        let value = prop.value.as_required_string().ok_or_else(|| {
+            prop_error(
+                prop,
+                "paginationVariant must be pages, controls, dots or bars",
+            )
+        })?;
+        pagination_variant =
+            dowe_components::PaginationVariant::from_name(&value).ok_or_else(|| {
+                prop_error(
+                    prop,
+                    "paginationVariant must be pages, controls, dots or bars",
+                )
+            })?;
+        explicit_pagination_variant = true;
+    }
+    if !explicit_pagination_variant
+        && let Some(prop) = node.prop("variant")
+        && let Some(value) = prop.value.as_string_like()
+        && let Some(variant) = dowe_components::PaginationVariant::from_name(&value)
+    {
+        pagination_variant = variant;
+    }
     let page_size = page_size
         .parse::<u32>()
         .ok()
@@ -38,7 +63,18 @@ fn lower_pagination_node(node: &SourceNode) -> DoweResult<ViewNode> {
         let name = match prop.name.as_str() {
             "bind" => "value",
             "onChange" => "onChange",
+            "paginationVariant" => continue,
             "variant" | "scheme" | "size" | "disabled" | "wide" | "vertical" | "ariaLabel" => {
+                if !explicit_pagination_variant
+                    && prop.name == "variant"
+                    && prop
+                        .value
+                        .as_string_like()
+                        .and_then(|value| dowe_components::PaginationVariant::from_name(&value))
+                        .is_some()
+                {
+                    continue;
+                }
                 prop.name.as_str()
             }
             "total" | "pageSize" => continue,
@@ -67,7 +103,11 @@ fn lower_pagination_node(node: &SourceNode) -> DoweResult<ViewNode> {
         unreachable!()
     };
     props.kind = ToggleGroupKind::Pagination;
-    props.pagination = Some(dowe_components::PaginationProps { total, page_size });
+    props.pagination = Some(dowe_components::PaginationProps {
+        total,
+        page_size,
+        variant: pagination_variant,
+    });
     Ok(pagination)
 }
 

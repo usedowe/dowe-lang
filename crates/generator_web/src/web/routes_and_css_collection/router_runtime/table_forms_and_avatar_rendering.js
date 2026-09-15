@@ -11,7 +11,8 @@ function tableColumns(table) {
   return Array.from(table.querySelectorAll("[data-dowe-table-field]")).map(
     head => ({
       field: head.dataset.doweTableField || "",
-      align: head.dataset.doweTableAlign || "start"
+      align: head.dataset.doweTableAlign || "start",
+      width: head.style.width || ""
     })
   );
 }
@@ -60,6 +61,10 @@ function renderTable(table, state, scope) {
           : column.align === "center"
             ? "center"
             : "start";
+      if (column.width) {
+        cell.style.width = column.width;
+        cell.style.minWidth = column.width;
+      }
       cell.textContent = tableCellValue(value, column.field);
       row.appendChild(cell);
     }

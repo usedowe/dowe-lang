@@ -152,16 +152,22 @@ fn render_compose_alert_dialog(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let visual = dowe_components::AlertVisualContract::standard();
     let path = escape_kotlin(&context.signal_path(&props.open));
     let mut panel_style = props.style.clone();
     panel_style.color = Some(ColorFamily::Surface);
     output.push_str(&format!(
-        "{pad}DoweAlertDialog(open = state.bool(\"{path}\"), close = {}, title = {}, description = {}, confirmText = {}, cancelText = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, confirmBackgroundColor = {}, confirmContentColor = {}, radius = {}, loading = {}, onConfirm = {})\n",
+        "{pad}DoweAlertDialog(open = state.bool(\"{path}\"), close = {}, title = {}, description = {}, confirmText = {}, cancelText = {}, panelPadding = {}.dp, contentGap = {}.dp, titleSize = {}.sp, descriptionSize = {}.sp, buttonGap = {}.dp, backgroundColor = {}, contentColor = {}, borderColor = {}, confirmBackgroundColor = {}, confirmContentColor = {}, radius = {}, loading = {}, onConfirm = {})\n",
         compose_close_action(&path, props.on_cancel.as_deref(), context),
         compose_string_literal(&props.title),
         compose_string_literal(&props.description),
         compose_string_literal(&props.confirm_text),
         compose_string_literal(&props.cancel_text),
+        visual.panel_padding,
+        visual.content_gap,
+        visual.title_size,
+        visual.description_size,
+        visual.button_gap,
         card_variant_container(&panel_style),
         card_variant_content(&panel_style),
         compose_variant_border(&panel_style),

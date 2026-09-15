@@ -103,6 +103,7 @@ fn generates_swiftui_display_overlay_components() {
 
     assert!(views.contains("struct DoweAvatar<Icon: View>: View"));
     assert!(views.contains("DoweAvatar(source: nil, name: \"Ada\""));
+    assert!(views.contains(".overlay(Circle().stroke(DoweDesign.background, lineWidth: CGFloat(3)))"));
     assert!(views.contains("DoweBadge(text: \"3\", position: \"bottom-right\""));
     assert!(views.contains(".alignmentGuide(.leading) { dimensions in"));
     assert!(views.contains("dimensions[HorizontalAlignment.center]"));
@@ -111,7 +112,7 @@ fn generates_swiftui_display_overlay_components() {
     assert!(views.contains("DoweChip(text: \"Filter\", size: \"sm\""));
     assert!(views.contains("hasStart: true, hasEnd: true"));
     assert!(views.contains("DoweSvgView(viewBox:"));
-    assert!(views.contains("DoweSkeleton(variant: \"rounded\", animation: \"pulse\")"));
+    assert!(views.contains("DoweSkeleton(variant: \"rounded\", animation: \"pulse\", textHeight: CGFloat(16), defaultRadius: CGFloat(6)"));
     assert!(views.contains("private let pathBuilder: @Sendable (CGRect) -> Path"));
     assert!(views.contains("struct DoweWindowOverlayPresenter: UIViewRepresentable"));
     assert!(views.contains("DoweModal(open: state.bool(\"modal01\")"));
@@ -350,7 +351,7 @@ fn generates_ios_overlay_surface_action_and_close_parity() {
     ));
     assert!(views.contains("struct DoweOverlayCloseIcon: View"));
     assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.mutedText)"));
-    assert!(views.contains("let modalWidth = geometry.size.width * 0.95"));
+    assert!(views.contains("let modalWidth = min(geometry.size.width * 0.95, CGFloat(560))"));
     assert!(views.contains(".frame(maxWidth: modalWidth, alignment: .leading)"));
     assert!(views.contains(".frame(width: CGFloat(28), height: CGFloat(28))"));
     assert!(views.contains(".frame(width: CGFloat(18), height: CGFloat(18))"));

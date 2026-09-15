@@ -85,10 +85,10 @@ meaningful Card; remove the wrapper and let the owning layout component carry th
 
 `Section gap:3` adds vertical spacing between direct children. It defaults to `0`, accepts a Dowe scale or pixel value such as `gap:"8px"`, and supports responsive values such as `gap:{ xs:2 md:4 }`; the same value lowers to web, Android, and iOS spacing behavior.
 
-A page `Section` already owns responsive horizontal and vertical padding. Never author `p`, `px`,
-`py`, `pt`, `pb`, `pl`, or `pr` on a page Section, including responsive objects and `p:0`; keep
-page bands on the built-in rhythm. Put any exceptional inset on the inner semantic owner only when
-that owner's contract requires it.
+A landing-page `Section` owns the page-band rhythm and may receive deliberate `p`, `px`, `py`,
+`pt`, `pb`, `pl`, or `pr` overrides when the visual direction calls for a different inset. A
+dashboard or operational `Section` should omit those props, including responsive objects and
+`p:0`; put density and exceptional inset on the inner Grid, Flex, Card, or control owner instead.
 
 `Section`, `Box`, `Flex`, `Grid`, and `Card` accept `flex:"initial"`, `flex:"auto",
 `flex:"none"`, or `flex:1`, including responsive values such as `flex:{ xs:1 md:"none" }`.

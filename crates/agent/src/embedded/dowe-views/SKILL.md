@@ -22,6 +22,7 @@ skip validation.
 | screenshot, mockup, or reference image | `references/reference-ui.md`, `references/assets.md` |
 | image, photograph, illustration, media, or asset | `references/assets.md` |
 | component, catalog, or reusable fragment | `references/components.md`, `references/composition.md` |
+| block, pattern, recipe, or reusable marketing section | `references/blocks/index.json`, then the matching focused block reference |
 | `audit`, critique, validation, or quality review | `references/audit.md` |
 | `polish`, refine, or final pass | `references/polish.md` |
 | layout, styles, theme, or responsive behavior | `references/layouts.md`, `references/styles.md`; also load `dowe-theme` references when defaults, semantic colors, or `theme.dowe` are involved |
@@ -65,7 +66,10 @@ logo, SVG, Canvas drawing, or empty Box.
 Start default-first. The component design defaults are the visual baseline. The strict prop-admission gate keeps
 redundant visual props out of the first tree. Omit theme-resolved `variant`, `scheme`,
 radius, padding, shadow, and typography props unless a contract, behavior, accessibility need,
-explicit non-default, or a rendered mismatch requires them. `Grid` and `Flex` default to zero gap;
+explicit non-default, or a rendered mismatch requires them. For a landing page, an intentional
+responsive `p`, `px`, `py`, or side-padding value on a `Section` is an allowed way to establish
+the spacious band rhythm; for dashboards and operational screens, omit those props on `Section`
+and let the inner `Grid`, `Flex`, `Card`, or control own density. `Grid` and `Flex` default to zero gap;
 do not add spacing by assumption. Default-first is not geometry-free: `w`, `h`, `minW`, `minH`,
 `maxW`, and `maxH` may preserve a real text measure, media bound, section height, or responsive
 relationship on the semantic owner. Resolve `variant` and `scheme` independently: an authored
@@ -117,6 +121,15 @@ compiler result, final result, asset status, and visual QA status separately.
 - `references/reference-ui.md`: screenshot evidence, blueprints, and parity.
 - `references/assets.md`: asset classification, provenance, URL mapping, media.
 - `references/components.md`: complete built-in and contextual component catalog.
+- `references/blocks/index.json`: block families and focused recipe selection metadata.
+- `references/blocks/hero-editorial.md`: editorial split hero source starter and refinement checks.
+- `references/blocks/proof-metrics.md`: compact proof metric source starter and refinement checks.
+- `references/blocks/split-media.md`: split media source starter and refinement checks.
+- `references/blocks/opportunity-band.md`: dark opportunity band source starter and refinement checks.
+- `references/blocks/growth-ladder.md`: growth ladder source starter and refinement checks.
+- `references/blocks/media-cta.md`: media CTA source starter and refinement checks.
+- `references/blocks/faq-editorial.md`: editorial FAQ source starter and refinement checks.
+- `references/blocks/contact-panel.md`: contact panel source starter and refinement checks.
 - `references/styles.md`: semantic styles, sizing, visibility, cover, motion.
 - `references/audit.md`: deterministic quality and compiler evidence.
 - `references/polish.md`: bounded refinement and handoff.
@@ -124,7 +137,6 @@ compiler result, final result, asset status, and visual QA status separately.
 - `references/canvas.md`: portable Canvas scenes and input.
 - `references/table.md`: portable and advanced table contracts.
 - `references/game.md`: retained game scenes and optional realtime transport.
-- `references/blocks/index.json`: documented block families.
 - `scripts/visual_qa.py`: blueprint, capture, comparison entrypoint.
 - `scripts/visual_qa_blueprint.py`: blueprint initialization.
 - `scripts/visual_qa_png.py`: bounded PNG helpers.

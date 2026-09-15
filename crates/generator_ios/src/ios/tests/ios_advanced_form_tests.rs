@@ -39,6 +39,7 @@ fn generates_swiftui_advanced_form_components() {
         )
     );
     assert!(views.contains("loadingText: \"Loading\""));
+    assert!(views.contains("foregroundStyle(contentColor.opacity(0.68)).frame(maxWidth: .infinity).padding(CGFloat(16))"));
     assert!(views.contains("disabled: false"));
     assert!(views.contains("struct DoweCsvColumn: Identifiable"));
     assert!(views.contains("DoweCsvField(label: \"Import\""));
@@ -188,6 +189,8 @@ fn generates_swiftui_advanced_form_components() {
     assert!(textarea.contains("!floating || focused"));
     assert!(textarea.contains("if visiblePlaceholder"));
     assert!(textarea.contains(".focused($focused)"));
+    assert!(textarea.contains(".padding(CGFloat(12))"));
+    assert!(textarea.contains(".padding(.horizontal, CGFloat(12))"));
 }
 #[test]
 fn draw_ios_preserves_selection_and_gesture_contracts() {

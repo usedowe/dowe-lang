@@ -142,4 +142,3 @@ fn generates_android_view_motion() {
     );
     assert!(dev.content.contains("renderCurrentRoute();"));
 }
-

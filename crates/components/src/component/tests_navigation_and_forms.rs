@@ -358,6 +358,31 @@ fn validates_carousel_variants_and_defaults() {
         }
     }
 
+    for variant in [
+        CarouselVariant::Simple,
+        CarouselVariant::Masonry,
+        CarouselVariant::Rtl,
+        CarouselVariant::Sticky,
+    ] {
+        assert!(variant.is_free_scroll());
+        assert!(!variant.uses_snap());
+    }
+    for variant in [
+        CarouselVariant::Snapping,
+        CarouselVariant::Controls,
+        CarouselVariant::Dots,
+        CarouselVariant::Thumbnails,
+        CarouselVariant::CoverFlow,
+        CarouselVariant::Slideshow,
+        CarouselVariant::Stories,
+        CarouselVariant::SmartStack,
+        CarouselVariant::CardStack,
+        CarouselVariant::Flipbook,
+    ] {
+        assert!(variant.uses_snap());
+        assert!(!variant.is_free_scroll());
+    }
+
     assert!(carousel_component_node(vec![string_prop("variant", "wheel")], vec![slide],).is_err());
 }
 

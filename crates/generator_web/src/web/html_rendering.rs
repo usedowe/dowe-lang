@@ -17,6 +17,7 @@ include!("html_rendering/table_and_tabs_html.rs");
 include!("html_rendering/tree_html.rs");
 include!("html_rendering/navigation_menu_html.rs");
 include!("html_rendering/media_html.rs");
+include!("html_rendering/carousel_html.rs");
 include!("html_rendering/form_action_html.rs");
 include!("html_rendering/form_field_html.rs");
 include!("html_rendering/drawer_avatar_shell_html.rs");

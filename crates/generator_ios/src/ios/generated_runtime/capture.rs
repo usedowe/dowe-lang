@@ -27,6 +27,7 @@ fn swift_runtime_capture() -> &'static str {
         .foregroundStyle(contentColor)
         .clipShape(RoundedRectangle(cornerRadius: radius))
         .disabled(disabled)
+        .opacity(disabled ? 0.5 : 1)
         .sheet(isPresented: $showingCamera) {
             DoweCameraPicker(facing: facing, onImage: { image in
                 showingCamera = false
@@ -120,6 +121,7 @@ struct DoweMicrophoneView: View {
         .padding(CGFloat(12))
         .background(backgroundColor.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: radius))
+        .opacity(disabled ? 0.5 : 1)
     }
 
     private func formatDuration(_ value: Double) -> String {

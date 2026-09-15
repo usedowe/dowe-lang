@@ -146,6 +146,83 @@ pub struct ToggleGroupProps {
 pub struct PaginationProps {
     pub total: PaginationTotal,
     pub page_size: u32,
+    pub variant: PaginationVariant,
+}
+
+/// Visual presentation for a Pagination control.
+///
+/// `Pages` preserves the traditional numbered-page control. The other
+/// variants intentionally describe only the navigation affordance so every
+/// target can share the same indicator contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PaginationVariant {
+    #[default]
+    Pages,
+    Controls,
+    Dots,
+    Bars,
+}
+
+impl PaginationVariant {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "pages" | "default" => Some(Self::Pages),
+            "controls" => Some(Self::Controls),
+            "dots" => Some(Self::Dots),
+            "bars" => Some(Self::Bars),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pages => "pages",
+            Self::Controls => "controls",
+            Self::Dots => "dots",
+            Self::Bars => "bars",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Pages, Self::Controls, Self::Dots, Self::Bars]
+    }
+}
+
+/// Shared geometry used by Pagination and Carousel indicators across targets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PaginationControlContract {
+    pub control_size: u16,
+    pub indicator_gap: u16,
+    pub indicator_height: u16,
+    pub indicator_inactive_width: u16,
+    pub indicator_active_width: u16,
+    pub indicator_dot_size: u16,
+    pub indicator_dot_active_scale_percent: u16,
+}
+
+impl PaginationControlContract {
+    pub const fn for_size(size: ButtonSize) -> Self {
+        let (indicator_height, indicator_inactive_width, indicator_active_width) = match size {
+            ButtonSize::Xs | ButtonSize::Sm => (6, 24, 32),
+            ButtonSize::Md => (8, 32, 48),
+            ButtonSize::Lg | ButtonSize::Xl => (10, 40, 64),
+        };
+        Self {
+            control_size: IconButtonGeometryContract::for_size(ButtonSize::Sm).control_size,
+            indicator_gap: 8,
+            indicator_height,
+            indicator_inactive_width,
+            indicator_active_width,
+            indicator_dot_size: 10,
+            indicator_dot_active_scale_percent: 125,
+        }
+    }
+}
+
+impl PaginationProps {
+    pub const fn control_contract(&self, size: ButtonSize) -> PaginationControlContract {
+        PaginationControlContract::for_size(size)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -327,6 +404,48 @@ pub struct AccordionItem {
     pub children: Vec<ViewNode>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CarouselControlPlacement {
+    OverlayStage,
+    BelowTrack,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CarouselControlContract {
+    pub navigation_placement: CarouselControlPlacement,
+    pub controls_placement: CarouselControlPlacement,
+    pub navigation_size: u16,
+    pub navigation_inset: u16,
+    pub control_size: u16,
+    pub control_gap: u16,
+    pub indicator_gap: u16,
+    pub indicator_height: u16,
+    pub indicator_inactive_width: u16,
+    pub indicator_active_width: u16,
+    pub indicator_dot_size: u16,
+    pub indicator_dot_active_scale_percent: u16,
+}
+
+impl CarouselControlContract {
+    pub const fn for_size(size: ButtonSize) -> Self {
+        let pagination = PaginationControlContract::for_size(size);
+        Self {
+            navigation_placement: CarouselControlPlacement::OverlayStage,
+            controls_placement: CarouselControlPlacement::BelowTrack,
+            navigation_size: IconButtonGeometryContract::for_size(ButtonSize::Md).control_size,
+            navigation_inset: 16,
+            control_size: pagination.control_size,
+            control_gap: pagination.indicator_gap,
+            indicator_gap: pagination.indicator_gap,
+            indicator_height: pagination.indicator_height,
+            indicator_inactive_width: pagination.indicator_inactive_width,
+            indicator_active_width: pagination.indicator_active_width,
+            indicator_dot_size: pagination.indicator_dot_size,
+            indicator_dot_active_scale_percent: pagination.indicator_dot_active_scale_percent,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CarouselProps {
     pub style: VariantProps,
@@ -349,6 +468,14 @@ pub struct CarouselProps {
 }
 
 impl CarouselProps {
+    pub fn control_contract(&self) -> CarouselControlContract {
+        CarouselControlContract::for_size(self.size)
+    }
+
+    pub fn pagination_contract(&self) -> PaginationControlContract {
+        PaginationControlContract::for_size(self.size)
+    }
+
     pub fn shows_controls(&self) -> bool {
         !self.hide_controls || self.variant == CarouselVariant::Controls
     }
@@ -358,7 +485,10 @@ impl CarouselProps {
     }
 
     pub fn has_variant_indicators(&self) -> bool {
-        matches!(self.variant, CarouselVariant::Dots | CarouselVariant::Thumbnails)
+        matches!(
+            self.variant,
+            CarouselVariant::Dots | CarouselVariant::Thumbnails
+        )
     }
 }
 

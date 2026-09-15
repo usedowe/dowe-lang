@@ -247,6 +247,7 @@ r#"    @ObservedObject var state: DoweReactiveState
                         .clipShape(RoundedRectangle(cornerRadius: CGFloat(9)))
                     }
                     .buttonStyle(.plain)
+                    .opacity(sending || selected != nil || submittedChoiceMessages.contains(message.id) ? 0.5 : 1)
                     .disabled(sending || selected != nil || submittedChoiceMessages.contains(message.id))
                 }
             }

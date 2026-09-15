@@ -42,7 +42,7 @@ private fun DoweDragGroupView(title: String, items: List<DoweDragItem>, emptyTex
 
 @Composable
 private fun DoweDragItemView(item: DoweDragItem, contentColor: Color) {
-    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(contentColor.copy(alpha = 0.08f)).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(contentColor.copy(alpha = 0.08f)).alpha(if (item.disabled) 0.58f else 1f).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("::", fontWeight = FontWeight.Bold, color = contentColor.copy(alpha = 0.55f))
         Column {
             Text(item.label ?: item.id, fontWeight = FontWeight.SemiBold, color = contentColor)
@@ -289,4 +289,3 @@ private fun DowePhone(value: String, onValueChange: (String) -> Unit, label: Str
     val filtered = if (normalizedQuery.isEmpty()) ordered else ordered.filter { it.name.lowercase().contains(normalizedQuery) || it.code.lowercase().contains(normalizedQuery) || it.dialCode.contains(normalizedQuery) }
     val popupOffset = with(LocalDensity.current) { IntOffset(0, triggerHeight + 4.dp.roundToPx()) }
 "#
-

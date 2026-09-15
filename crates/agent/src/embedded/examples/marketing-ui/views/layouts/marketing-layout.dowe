@@ -1,0 +1,43 @@
+layout MarketingLayout
+  signal openNavigation value:false
+  Scaffold
+    appBar
+      AppBar boxed:true position:"fixed" bordered:true shadow:"sm"
+        start
+          IconButton icon:"menu-dots" label:"Abrir navegación" show:{ xs:true md:false } onClick:{ set:openNavigation value:!openNavigation }
+          Brand href:"/" label:"Marketing Blocks" h:7
+            Svg viewBox:"0 0 128 32" w:"full" h:"full"
+              Path d:"M2 2H18C27 2 32 7 32 16C32 25 27 30 18 30H2V2Z" fill:"primary"
+              Path d:"M44 8H54C60 8 64 11 64 16C64 21 60 24 54 24H44V8Z" fill:"secondary"
+              Path d:"M76 8H86C92 8 96 11 96 16C96 21 92 24 86 24H76V8Z" fill:"primary"
+        center
+          NavMenu show:{ xs:false md:true }
+            item label:"Ecosistema" href:"#ecosystem"
+            item label:"Oportunidad" href:"#genesis"
+            item label:"Crecimiento" href:"#growth"
+            item label:"FAQ" href:"#faq"
+        end
+          Button href:"#contact" show:{ xs:false md:true }
+            "Contactar"
+    main
+      children
+      Footer boxed:true
+        start
+          Brand href:"/" label:"Marketing Blocks" h:6
+            Svg viewBox:"0 0 32 32" w:"full" h:"full"
+              Path d:"M2 2H18C27 2 32 7 32 16C32 25 27 30 18 30H2V2Z" fill:"primary"
+        end
+          Text size:"sm"
+            "Composición semántica · evidencia visual"
+    overlays
+      Drawer bind:openNavigation show:{ xs:true md:false }
+        header
+          Text
+            "Navegación"
+        body
+          SideNav
+            item label:"Ecosistema" href:"#ecosystem"
+            item label:"Oportunidad" href:"#genesis"
+            item label:"Crecimiento" href:"#growth"
+            item label:"FAQ" href:"#faq"
+            item label:"Contacto" href:"#contact"

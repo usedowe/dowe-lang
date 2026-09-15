@@ -25,8 +25,8 @@
   flex:0 0 auto;
   align-self:flex-start;
   overflow-x:auto;
-  gap:0.5rem;
-  padding:0.25rem;
+  gap:var(--dowe-tabs-list-gap);
+  padding:var(--dowe-tabs-padding-y) 0;
   position:relative;
   user-select:none;
   scrollbar-width:none;
@@ -49,7 +49,7 @@
   border-color:transparent;
   background:transparent;
   color:inherit;
-  padding:0.25rem 1rem;
+  padding:var(--dowe-tabs-padding-y) var(--dowe-tabs-padding-x);
   position:relative;
   transition:color 160ms ease,background-color 160ms ease,border-color 160ms ease;
   font:inherit;

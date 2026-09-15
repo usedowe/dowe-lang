@@ -163,17 +163,42 @@ fn render_pagination_html(
             dowe_components::PaginationTotal::Signal(_) => 1,
         })
         .unwrap_or(rendered_pages);
+    let pagination_variant = props
+        .pagination
+        .as_ref()
+        .map(|pagination| pagination.variant)
+        .unwrap_or(PaginationVariant::Pages);
+    let pagination_contract = props
+        .pagination
+        .as_ref()
+        .map(|pagination| pagination.control_contract(props.size))
+        .unwrap_or_else(|| PaginationControlContract::for_size(props.size));
     let variant = props.style.variant.unwrap_or(ComponentVariant::Outlined).as_str();
     let family = props.style.color.unwrap_or(ColorFamily::Primary);
     let color = family.as_str();
+    let visual_contract = props.pagination_visual_contract();
     let previous = solar_control_icon("arrow-left").expect("bundled Pagination previous icon");
     let next = solar_control_icon("arrow-right").expect("bundled Pagination next icon");
     let previous_icon = render_svg_html(&previous.props, &previous.paths, context);
     let next_icon = render_svg_html(&next.props, &next.paths, context);
     let mut extra = format!(
-        r#" role="navigation" data-dowe-toggle-group data-dowe-pagination data-dowe-pagination-pages="{}""#,
-        rendered_pages
+        r#" role="navigation" data-dowe-toggle-group data-dowe-pagination data-dowe-pagination-pages="{}" data-dowe-pagination-variant="{}""#,
+        rendered_pages,
+        pagination_variant.as_str()
     );
+    extra.push_str(&format!(
+        r#" style="--dowe-pagination-control-size:{}px;--dowe-pagination-indicator-gap:{}px;--dowe-pagination-indicator-height:{}px;--dowe-pagination-indicator-inactive-width:{}px;--dowe-pagination-indicator-active-width:{}px;--dowe-pagination-indicator-dot-size:{}px;--dowe-pagination-indicator-dot-active-scale:{};--dowe-pagination-inactive-alpha:{};--dowe-pagination-disabled-alpha:{};--dowe-pagination-control-border-alpha:{};""#,
+        pagination_contract.control_size,
+        pagination_contract.indicator_gap,
+        pagination_contract.indicator_height,
+        pagination_contract.indicator_inactive_width,
+        pagination_contract.indicator_active_width,
+        pagination_contract.indicator_dot_size,
+        f32::from(pagination_contract.indicator_dot_active_scale_percent) / 100.0,
+        visual_contract.inactive_alpha,
+        visual_contract.disabled_alpha,
+        visual_contract.control_border_alpha,
+    ));
     if let Some(pagination) = props.pagination.as_ref()
         && let dowe_components::PaginationTotal::Signal(total) = &pagination.total
     {
@@ -202,49 +227,106 @@ fn render_pagination_html(
     let disabled = props.disabled;
     let previous_disabled = disabled || selected <= 1;
     let next_disabled = disabled || selected >= initial_pages;
-    let mut controls = format!(
-        r#"<button class="toggle-group-item pagination-nav is-{variant} is-{color} is-active" type="button" aria-label="Previous page" data-dowe-pagination-step="-1"{}><span class="pagination-icon">{previous_icon}</span></button>"#,
+    let mut controls = String::new();
+    let icon_button_classes = |extra_class: &str, size: &str| {
+        let mut classes = variant_classes("button", &props.style);
+        classes.retain(|class| !class.starts_with("button-"));
+        classes.push(format!("button-{size}"));
+        classes.extend([
+            "icon-button".to_string(),
+            "rounded-full".to_string(),
+            "pagination-nav".to_string(),
+            extra_class.to_string(),
+        ]);
+        class_attr(classes)
+    };
+    let previous_button = format!(
+        r#"<button{} type="button" aria-label="Previous page" data-dowe-pagination-step="-1"{}><span data-dowe-button-icon-start class="pagination-icon">{previous_icon}</span></button>"#,
+        icon_button_classes("pagination-previous", "sm"),
         if previous_disabled { " disabled" } else { "" }
     );
-    for (index, item) in items.iter().enumerate() {
-        let page = index + 1;
-        if rendered_pages > 7 && page == 2 {
-            controls.push_str(&format!(
-                r#"<span class="pagination-ellipsis pagination-ellipsis-start" aria-hidden="true"{}>…</span>"#,
-                if selected <= 3 { " hidden" } else { "" }
-            ));
-        }
-        if rendered_pages > 7 && page == rendered_pages {
-            controls.push_str(&format!(
-                r#"<span class="pagination-ellipsis pagination-ellipsis-end" aria-hidden="true"{}>…</span>"#,
-                if selected >= initial_pages.saturating_sub(2) { " hidden" } else { "" }
-            ));
-        }
-        let active = page == selected;
-        let visible = page <= initial_pages
-            && (initial_pages <= 7
-                || page == 1
-                || page == initial_pages
-                || page.abs_diff(selected) <= 1);
-        let state_attrs = format!(
-            "{}{}",
-            if disabled { " disabled" } else { "" },
-            if visible { "" } else { " hidden" }
-        );
-        controls.push_str(&format!(
-            r#"<button class="toggle-group-item pagination-page is-{variant} is-{color}{}" type="button" aria-label="Page {}"{} data-dowe-toggle-group-item="{}"{}><span>{}</span></button>"#,
-            if active { " is-active" } else { "" },
-            page,
-            if active { r#" aria-current="page""# } else { "" },
-            escape_attr(&item.id),
-            state_attrs,
-            escape_html(&item.label)
-        ));
-    }
-    controls.push_str(&format!(
-        r#"<button class="toggle-group-item pagination-nav is-{variant} is-{color} is-active" type="button" aria-label="Next page" data-dowe-pagination-step="1"{}><span class="pagination-icon">{next_icon}</span></button>"#,
+    let next_button = format!(
+        r#"<button{} type="button" aria-label="Next page" data-dowe-pagination-step="1"{}><span data-dowe-button-icon-start class="pagination-icon">{next_icon}</span></button>"#,
+        icon_button_classes("pagination-next", "sm"),
         if next_disabled { " disabled" } else { "" }
-    ));
+    );
+    let indicator_kind = match pagination_variant {
+        PaginationVariant::Dots => "dot",
+        PaginationVariant::Bars | PaginationVariant::Controls => "bar",
+        PaginationVariant::Pages => "page",
+    };
+    let indicators = || {
+        let mut html = format!(
+            r#"<div class="pagination-indicators is-{indicator_kind}" role="group" aria-label="Pagination pages">"#
+        );
+        for (index, _) in items.iter().enumerate() {
+            let page = index + 1;
+            let active = page == selected;
+            let visible = page <= initial_pages;
+            let classes = format!(
+                "pagination-indicator is-{indicator_kind}{}",
+                if active { " is-active" } else { "" }
+            );
+            html.push_str(&format!(
+                r#"<button class="{classes}" type="button" aria-label="Go to page {page}"{} data-dowe-toggle-group-item="{page}" data-dowe-pagination-indicator="{page}"{}></button>"#,
+                if active { r#" aria-current="page""# } else { "" },
+                if disabled || !visible { " disabled hidden" } else { "" }
+            ));
+        }
+        html.push_str("</div>");
+        html
+    };
+    match pagination_variant {
+        PaginationVariant::Pages => {
+            controls.push_str(&previous_button);
+            for (index, item) in items.iter().enumerate() {
+                let page = index + 1;
+                if rendered_pages > 7 && page == 2 {
+                    controls.push_str(&format!(
+                        r#"<span class="pagination-ellipsis pagination-ellipsis-start" aria-hidden="true"{}>…</span>"#,
+                        if selected <= 3 { " hidden" } else { "" }
+                    ));
+                }
+                if rendered_pages > 7 && page == rendered_pages {
+                    controls.push_str(&format!(
+                        r#"<span class="pagination-ellipsis pagination-ellipsis-end" aria-hidden="true"{}>…</span>"#,
+                        if selected >= initial_pages.saturating_sub(2) { " hidden" } else { "" }
+                    ));
+                }
+                let active = page == selected;
+                let visible = page <= initial_pages
+                    && (initial_pages <= 7
+                        || page == 1
+                        || page == initial_pages
+                        || page.abs_diff(selected) <= 1);
+                let state_attrs = format!(
+                    "{}{}",
+                    if disabled { " disabled" } else { "" },
+                    if visible { "" } else { " hidden" }
+                );
+                controls.push_str(&format!(
+                    r#"<button class="toggle-group-item pagination-page is-{variant} is-{color}{}" type="button" aria-label="Page {}"{} data-dowe-toggle-group-item="{}"{}><span>{}</span></button>"#,
+                    if active { " is-active" } else { "" },
+                    page,
+                    if active { r#" aria-current="page""# } else { "" },
+                    escape_attr(&item.id),
+                    state_attrs,
+                    escape_html(&item.label)
+                ));
+            }
+            controls.push_str(&next_button);
+        }
+        PaginationVariant::Controls => {
+            controls.push_str(&previous_button);
+            controls.push_str(&indicators());
+            controls.push_str(&format!(
+                r#"<span class="pagination-count" data-dowe-pagination-counter>{} / {}</span>"#,
+                selected, initial_pages
+            ));
+            controls.push_str(&next_button);
+        }
+        PaginationVariant::Dots | PaginationVariant::Bars => controls.push_str(&indicators()),
+    }
     format!(
         "<nav{}>{}</nav>",
         attrs(

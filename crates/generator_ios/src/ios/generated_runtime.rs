@@ -19,6 +19,7 @@ include!("generated_runtime/game_socket.rs");
 include!("generated_runtime/avatar_chat.rs");
 include!("generated_runtime/empty_motion_text.rs");
 include!("generated_runtime/rich_controls_map.rs");
+include!("generated_runtime/map.rs");
 include!("generated_runtime/badge_chip_skeleton.rs");
 include!("generated_runtime/anchored_popover.rs");
 include!("generated_runtime/overlays.rs");

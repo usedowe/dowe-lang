@@ -351,10 +351,19 @@ pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
                 "persistencia",
             ],
         ),
-    ] {
+    ]
+    .into_iter()
+    .chain(marketing_block_rules())
+    {
         if terms.iter().any(|term| has(term)) {
             selected.insert(id.into());
         }
+    }
+    if selected
+        .iter()
+        .any(|id| id.starts_with("views/blocks/") && id != "views/blocks")
+    {
+        selected.insert("views/blocks".into());
     }
     if selected.contains("views/components") {
         selected.insert("views/catalog".into());
@@ -438,5 +447,32 @@ mod svg_catalog_tests {
         assert!(select_units("audit accessibility", &[]).contains(&"views/audit".into()));
         assert!(select_units("polish the final screen", &[]).contains(&"views/polish".into()));
         assert!(select_units("build a realtime game", &[]).contains(&"views/game".into()));
+    }
+
+    #[test]
+    fn routes_marketing_structure_to_initial_block_units() {
+        let english = select_units(
+            "Build a landing page with a hero, proof metrics, split media, opportunity, growth, CTA, FAQ and contact",
+            &[],
+        );
+        let spanish = select_units(
+            "Construye una landing con hero, métricas, ecosistema, oportunidad, crecimiento, CTA, preguntas frecuentes y contacto",
+            &[],
+        );
+        for units in [english, spanish] {
+            assert!(units.contains(&"views/blocks".into()));
+            for id in [
+                "views/blocks/hero",
+                "views/blocks/metrics",
+                "views/blocks/split-media",
+                "views/blocks/opportunity",
+                "views/blocks/growth",
+                "views/blocks/cta",
+                "views/blocks/faq",
+                "views/blocks/contact",
+            ] {
+                assert!(units.contains(&id.into()), "missing {id}: {units:?}");
+            }
+        }
     }
 }

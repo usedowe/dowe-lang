@@ -26,6 +26,8 @@ fn generates_android_tree_for_compose_and_dev_runtime() {
     assert!(dev.content.contains("tree.open.put(node.id, nextOpen)"));
     assert!(dev.content.contains("doweRunAction(tree.onSelect, node.value)"));
     assert!(dev.content.contains("renderCurrentRoute(false);"));
+    assert!(dev.content.contains("guide.setBackgroundColor(doweAlpha(tree.contentColor, 0.16f));"));
+    assert!(dev.content.contains("FrameLayout.LayoutParams(doweDp(1), doweDp(28), android.view.Gravity.END)"));
 }
 
 #[test]

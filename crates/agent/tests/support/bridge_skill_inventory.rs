@@ -43,6 +43,14 @@ fn lists_public_authoring_skills_without_workspace_skills() {
             "references/composition.md",
             "references/shape.md",
             "references/blocks/index.json",
+            "references/blocks/hero-editorial.md",
+            "references/blocks/proof-metrics.md",
+            "references/blocks/split-media.md",
+            "references/blocks/opportunity-band.md",
+            "references/blocks/growth-ladder.md",
+            "references/blocks/media-cta.md",
+            "references/blocks/faq-editorial.md",
+            "references/blocks/contact-panel.md",
             "references/reference-ui.md",
             "references/assets.md",
             "references/components.md",
@@ -308,6 +316,33 @@ fn gets_compact_and_full_view_skill_documents() {
 }
 
 #[test]
+fn block_index_connects_initial_recipes_to_focused_skill_units() {
+    let index: Value = serde_json::from_str(VIEW_BLOCK_INDEX).expect("block index json");
+    let recipes = index["recipes"].as_array().expect("recipes");
+
+    assert_eq!(recipes.len(), 8);
+    for recipe in recipes {
+        let unit = recipe["skillUnit"].as_str().expect("skill unit");
+        let resource = recipe["resource"].as_str().expect("resource");
+        let source = recipe["exampleSource"].as_str().expect("example source");
+        assert!(unit.starts_with("views/blocks/"));
+        assert!(resource.starts_with("references/blocks/") && resource.ends_with(".md"));
+        assert!(source.starts_with("dowe-agent://examples/marketing-ui/"));
+        assert_eq!(recipe["lifecycle"], "initial");
+        assert!(
+            recipe["components"]
+                .as_array()
+                .is_some_and(|items| !items.is_empty())
+        );
+        assert!(
+            recipe["tags"]
+                .as_array()
+                .is_some_and(|items| !items.is_empty())
+        );
+    }
+}
+
+#[test]
 fn block_index_is_valid_compact_and_self_contained() {
     let index: Value = serde_json::from_str(VIEW_BLOCK_INDEX).expect("block index json");
 
@@ -366,8 +401,7 @@ fn gets_one_declared_public_skill_resource() {
 
 #[test]
 fn gets_the_focused_svg_skill_resource() {
-    let resource =
-        get_public_skill_resource("views", "references/svg.md").expect("svg resource");
+    let resource = get_public_skill_resource("views", "references/svg.md").expect("svg resource");
 
     assert_eq!(resource.id, "views");
     assert_eq!(resource.name, "dowe-views");
@@ -380,12 +414,16 @@ fn gets_the_focused_svg_skill_resource() {
 
 #[test]
 fn side_nav_skill_keeps_identity_on_the_root() {
-    let layouts = get_public_skill_resource("views", "references/layouts.md")
-        .expect("layouts resource");
+    let layouts =
+        get_public_skill_resource("views", "references/layouts.md").expect("layouts resource");
     assert!(layouts.content.contains("item label:\"Home\" href:\"/\""));
     assert!(!layouts.content.contains("item id:"));
 
     let components = get_public_skill_resource("views", "references/components.md")
         .expect("components resource");
-    assert!(components.content.contains("`item` entries do not accept `id`"));
+    assert!(
+        components
+            .content
+            .contains("`item` entries do not accept `id`")
+    );
 }

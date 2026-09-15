@@ -159,6 +159,8 @@ fn generates_compose_and_dev_display_chat_and_motion_components() {
             .contains("if (actionVisible && onAction != null && !sending && !pendingChoice)")
     );
     assert!(views.content.contains("DoweEmpty(kind = \"result\""));
+    assert!(views.content.contains("modifier = Modifier.fillMaxWidth(), color = contentColor.copy(alpha = 0.64f), fontSize = descriptionSize"));
+    assert!(views.content.contains("textAlign = TextAlign.Center"));
     assert!(
         views
             .content
@@ -277,6 +279,8 @@ fn generates_compose_and_dev_rich_control_map_components() {
             .contains("DoweToggleGroup(value = state.text(\"mode\")")
     );
     assert!(views.content.contains("ButtonDefaults"));
+    assert!(views.content.contains("disabledContainerColor = backgroundColor.copy(alpha = 0.42f)"));
+    assert!(views.content.contains("disabledContentColor = contentColor.copy(alpha = 0.42f)"));
     assert!(
         views
             .content
@@ -326,6 +330,8 @@ fn generates_compose_and_dev_rich_control_map_components() {
             .contains("DoweMap(centerLat = \"4.7109\", centerLng = \"-74.0721\"")
     );
     assert!(views.content.contains("DoweMapMarker(id = \"office\""));
+    assert!(views.content.contains("width(34.dp).clip(RoundedCornerShape(10.dp))"));
+    assert!(views.content.contains("background(contentColor.copy(alpha = 0.12f))"));
 
     let dev = dev_java_source(&output);
     assert!(dev.content.contains("doweRichTextMark("));
@@ -399,10 +405,7 @@ fn generates_compose_and_dev_rich_control_map_components() {
     );
     assert!(dev.content.contains("update[0].run();"));
     assert!(dev.content.contains("doweText(\"Office\""));
-    assert!(
-        dev.content
-            .contains("setContentDescription(\"Previous page\")")
-    );
-    assert!(dev.content.contains("setContentDescription(\"Next page\")"));
+    assert!(dev.content.contains("doweIconButton("));
+    assert!(dev.content.contains("Previous page"));
+    assert!(dev.content.contains("Next page"));
 }
-

@@ -78,6 +78,21 @@ fn renders_navigation_shell_markup_runtime_and_css() {
 }
 
 #[test]
+fn emits_shared_focus_ring_for_interactive_controls() {
+    let css = super::design_css();
+
+    assert!(css.contains(
+        ".button:focus-visible{outline:var(--dowe-state-focus-ring-width,2px) solid color-mix(in srgb,currentColor calc(var(--dowe-state-focus-ring-alpha,0.24) * 100%),transparent);outline-offset:2px;}"
+    ));
+    assert!(css.contains(
+        ".pagination .toggle-group-item:focus-visible{outline:var(--dowe-state-focus-ring-width,2px) solid color-mix(in srgb,currentColor calc(var(--dowe-state-focus-ring-alpha,.24) * 100%),transparent);outline-offset:2px;}"
+    ));
+    assert!(css.contains(
+        ".carousel-nav:focus-visible,.carousel-control:focus-visible,.carousel-indicator:focus-visible,.carousel-thumbnail:focus-visible{outline:var(--dowe-state-focus-ring-width,2px) solid color-mix(in srgb,currentColor calc(var(--dowe-state-focus-ring-alpha,.24) * 100%),transparent);outline-offset:2px;}"
+    ));
+}
+
+#[test]
 fn omitted_navigation_variants_do_not_render_as_solid_primary_controls() {
     let nav_menu = ViewNode::NavMenu {
         props: NavMenuProps {

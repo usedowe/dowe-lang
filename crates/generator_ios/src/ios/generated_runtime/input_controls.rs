@@ -171,6 +171,9 @@ struct DoweInputField: View {
                     .stroke(borderColor ?? Color.clear, lineWidth: borderWidth)
             )
             .overlay {
+                if focused && validationError == nil {
+                    RoundedRectangle(cornerRadius: radius).stroke(contentColor.opacity(0.24), lineWidth: CGFloat(2))
+                }
                 if validationError != nil {
                     RoundedRectangle(cornerRadius: radius).stroke(DoweDesign.danger, lineWidth: CGFloat(1))
                 }

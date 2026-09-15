@@ -46,7 +46,7 @@ r#"struct DoweAvatar<Icon: View>: View {
                     Circle()
                         .fill(statusColor(status))
                         .frame(width: indicatorSize, height: indicatorSize)
-                        .overlay(Circle().stroke(DoweDesign.background, lineWidth: CGFloat(1)))
+                        .overlay(Circle().stroke(DoweDesign.background, lineWidth: CGFloat(3)))
                 }
             }
         if let action {

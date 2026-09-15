@@ -284,7 +284,7 @@ struct DoweModal<Header: View, Content: View, Footer: View>: View {
 
     private var modalLayer: some View {
         GeometryReader { geometry in
-            let modalWidth = geometry.size.width * 0.95
+            let modalWidth = min(geometry.size.width * 0.95, CGFloat(560))
             ZStack {
                 Color.black.opacity(0.48)
                     .ignoresSafeArea()

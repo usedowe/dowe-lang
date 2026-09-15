@@ -169,7 +169,7 @@ function chartLegend(chart, series) {
     chart.dataset.doweChartLegendPosition === "none"
   )
     return;
-  for (const item of series) {
+  for (const item of series.slice(0, 6)) {
     const row = document.createElement("div");
     row.className = "dowe-chart-legend-item";
     const swatch = document.createElement("span");

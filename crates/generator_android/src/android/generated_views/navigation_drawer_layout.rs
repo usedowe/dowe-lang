@@ -88,7 +88,7 @@ private fun DoweTabButton(item: DoweTabItem, index: Int, active: Boolean, positi
                 }
             })
             .clickable(onClick = onClick)
-            .padding(horizontal = if (variant == "stepper") 0.dp else 16.dp, vertical = 6.dp),
+            .padding(horizontal = if (variant == "stepper") 0.dp else 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         if (variant == "stepper") {
@@ -263,7 +263,7 @@ private fun DoweNavMenu(modifier: Modifier = Modifier, gap: Dp, popoverBackgroun
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
                     DoweNavMenuPopoverSurface(onDismiss = { openIndex = null }) {
-                        Column(modifier = Modifier.widthIn(min = 192.dp, max = 720.dp).heightIn(max = 640.dp).padding(8.dp)) {
+                        Column(modifier = Modifier.widthIn(min = 192.dp, max = 360.dp).heightIn(max = 360.dp).padding(8.dp)) {
                             CompositionLocalProvider(LocalDoweTitleColor provides DoweDesign.backgroundTitle) {
                                 popover(openIndex)
                             }

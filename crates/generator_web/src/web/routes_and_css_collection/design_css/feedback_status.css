@@ -14,8 +14,8 @@
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:1.5rem;
-  height:1.5rem;
+  width:var(--dowe-alert-close-button-size);
+  height:var(--dowe-alert-close-button-size);
   border:0;
   border-radius:999px;
   background:transparent;
@@ -73,11 +73,10 @@
   position:absolute;
   right:0;
   bottom:0;
-  transform:translate(25%,25%);
 }
 .avatar-indicator {
   display:block;
-  border:2px solid var(--dowe-background);
+  border:3px solid var(--dowe-background);
   border-radius:9999px;
 }
 .avatar-indicator.is-online {
@@ -186,10 +185,11 @@
   justify-content:center;
   min-width:1.25rem;
   height:1.25rem;
-  padding:0 .25rem;
+  box-sizing:border-box;
+  padding:.125rem .375rem;
   border-radius:9999px;
   font-size:.75rem;
-  font-weight:700;
+  font-weight:600;
   line-height:1;
 }
 .badge.is-top-left .badge-content {
@@ -260,9 +260,9 @@
   font-size:.75rem;
 }
 .chip-md {
-  min-height:2rem;
-  padding:0 1rem;
-  font-size:.875rem;
+  min-height:var(--dowe-chip-height-md);
+  padding:0 var(--dowe-chip-padding-md);
+  font-size:var(--dowe-chip-text-md);
 }
 .chip-lg {
   min-height:2.5rem;
@@ -285,7 +285,7 @@
   will-change:background-position,opacity;
 }
 .skeleton.is-text {
-  height:1rem;
+  height:var(--skeleton-text-height);
   width:100%;
 }
 .skeleton.is-circular {
@@ -306,7 +306,7 @@
   background-position-x:-50%;
 }
 .skeleton.is-pulse {
-  animation:dowe-skeleton-pulse 1.5s ease-in-out infinite;
+  animation:dowe-skeleton-pulse var(--skeleton-pulse-duration) ease-in-out infinite;
 }
 @keyframes dowe-skeleton-wave {
   0% {
@@ -321,7 +321,7 @@
     opacity:1;
   }
   50% {
-    opacity:.4;
+    opacity:var(--skeleton-pulse-alpha);
   }
 }
 .badge {

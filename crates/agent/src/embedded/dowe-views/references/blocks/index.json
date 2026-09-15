@@ -4,8 +4,9 @@
   "corpus": {
     "documentationPages": 94,
     "blockEntries": 75,
+    "recipeEntries": 8,
     "families": 17,
-    "note": "The catalog stores selection metadata, not complete documentation pages or embedded screenshots."
+    "note": "The catalog stores selection metadata, not complete documentation pages or embedded screenshots. Initial recipes are reusable source starters and remain subject to reference-specific visual QA."
   },
   "retrieval": {
     "maxCandidates": 5,
@@ -13,6 +14,186 @@
     "uiFilter": "For UI generation, ignore entries whose kind is server.",
     "sourcePolicy": "Generate Dowe source from the selected pattern and current compiler contracts; do not copy documentation gallery wrappers."
   },
+  "recipes": [
+    {
+      "id": "marketing/editorial-hero",
+      "family": "hero",
+      "title": "Editorial split hero",
+      "skillUnit": "views/blocks/hero",
+      "resource": "references/blocks/hero-editorial.md",
+      "exampleSource": "dowe-agent://examples/marketing-ui/views/components/editorial-hero.dowe",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Image",
+        "Title"
+      ],
+      "tags": [
+        "hero",
+        "landing",
+        "focal-media",
+        "right-media",
+        "marketing"
+      ],
+      "lifecycle": "initial"
+    },
+    {
+      "id": "marketing/proof-metrics",
+      "family": "metrics",
+      "title": "Compact proof metrics",
+      "skillUnit": "views/blocks/metrics",
+      "resource": "references/blocks/proof-metrics.md",
+      "exampleSource": "dowe-agent://examples/marketing-ui/views/components/proof-metrics.dowe",
+      "components": [
+        "Grid",
+        "Flex",
+        "Title",
+        "Text"
+      ],
+      "tags": [
+        "metrics",
+        "proof",
+        "stats",
+        "compact"
+      ],
+      "lifecycle": "initial"
+    },
+    {
+      "id": "marketing/split-media",
+      "family": "split-media",
+      "title": "Split media section",
+      "skillUnit": "views/blocks/split-media",
+      "resource": "references/blocks/split-media.md",
+      "exampleSource": "dowe-agent://examples/marketing-ui/views/components/split-media.dowe",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Image"
+      ],
+      "tags": [
+        "ecosystem",
+        "services",
+        "feature",
+        "image",
+        "two-column"
+      ],
+      "lifecycle": "initial"
+    },
+    {
+      "id": "marketing/opportunity-band",
+      "family": "opportunity",
+      "title": "Dark opportunity band",
+      "skillUnit": "views/blocks/opportunity",
+      "resource": "references/blocks/opportunity-band.md",
+      "exampleSource": "dowe-agent://examples/marketing-ui/views/components/opportunity-band.dowe",
+      "components": [
+        "Section",
+        "Card",
+        "Grid",
+        "Svg",
+        "Button"
+      ],
+      "tags": [
+        "opportunity",
+        "genesis",
+        "launch",
+        "dark",
+        "high-contrast"
+      ],
+      "lifecycle": "initial"
+    },
+    {
+      "id": "marketing/growth-ladder",
+      "family": "growth",
+      "title": "Growth ladder",
+      "skillUnit": "views/blocks/growth",
+      "resource": "references/blocks/growth-ladder.md",
+      "exampleSource": "dowe-agent://examples/marketing-ui/views/components/growth-ladder.dowe",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Svg"
+      ],
+      "tags": [
+        "growth",
+        "utility",
+        "adoption",
+        "progress",
+        "chart"
+      ],
+      "lifecycle": "initial"
+    },
+    {
+      "id": "marketing/media-cta",
+      "family": "cta",
+      "title": "Media CTA panel",
+      "skillUnit": "views/blocks/cta",
+      "resource": "references/blocks/media-cta.md",
+      "exampleSource": "dowe-agent://examples/marketing-ui/views/components/media-cta.dowe",
+      "components": [
+        "Section",
+        "Card",
+        "Grid",
+        "Flex",
+        "Button",
+        "Image"
+      ],
+      "tags": [
+        "cta",
+        "white-paper",
+        "closing-panel",
+        "media"
+      ],
+      "lifecycle": "initial"
+    },
+    {
+      "id": "marketing/faq-editorial",
+      "family": "faq",
+      "title": "Editorial FAQ",
+      "skillUnit": "views/blocks/faq",
+      "resource": "references/blocks/faq-editorial.md",
+      "exampleSource": "dowe-agent://examples/marketing-ui/views/components/faq-editorial.dowe",
+      "components": [
+        "Section",
+        "Flex",
+        "Accordion",
+        "Button"
+      ],
+      "tags": [
+        "faq",
+        "questions",
+        "accordion",
+        "disclosure"
+      ],
+      "lifecycle": "initial"
+    },
+    {
+      "id": "marketing/contact-panel",
+      "family": "contact",
+      "title": "Contact information panel",
+      "skillUnit": "views/blocks/contact",
+      "resource": "references/blocks/contact-panel.md",
+      "exampleSource": "dowe-agent://examples/marketing-ui/views/components/contact-panel.dowe",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Button"
+      ],
+      "tags": [
+        "contact",
+        "channels",
+        "community",
+        "marketing"
+      ],
+      "lifecycle": "initial"
+    }
+  ],
   "families": {
     "accordion": {
       "kind": "view",

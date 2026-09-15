@@ -299,6 +299,8 @@ fn generates_swiftui_tree_with_native_state_and_selection() {
     assert!(views.contains("accessibilityLabel(ariaLabel)"));
     assert!(views.contains("folder-with-files"));
     assert!(views.contains("file-text"));
+    assert!(views.contains("HStack(spacing: CGFloat(0))"));
+    assert!(views.contains(".frame(width: CGFloat(16), height: CGFloat(28), alignment: .trailing)"));
 }
 
 #[test]

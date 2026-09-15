@@ -52,9 +52,10 @@ layout AppLayout
 ```
 
 Every page starts with `Section`. Add sibling `Section` declarations for distinct hero, content,
-form, catalog, pricing, testimonial, or call-to-action bands. Section already owns responsive
-padding; never author `p`, `px`, `py`, `pt`, `pb`, `pl`, or `pr` on a page Section, including
-responsive values and `p:0`.
+form, catalog, pricing, testimonial, or call-to-action bands. For landing pages, use Section's
+responsive padding defaults and add intentional `p`, `px`, `py`, `pt`, `pb`, `pl`, or `pr` values
+when a band needs a different rhythm. For dashboards and operational pages, omit those props on
+the Section, including responsive values and `p:0`, and keep density on its inner content owners.
 
 ```text
 page BlogsPage

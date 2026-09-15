@@ -139,6 +139,22 @@ r#"    private static final int DOWE_IMAGE_MEMORY_CACHE_BYTES = 24 * 1024 * 1024
         return doweStyledBackground(color, strokeColor, strokeColor == null ? null : 1, radius);
     }
 
+    private FrameLayout doweIconButton(DoweSvgView icon, String label, int size, int iconSize, int backgroundColor, int contentColor, Integer borderColor) {
+        FrameLayout button = new FrameLayout(this);
+        button.setContentDescription(label);
+        button.setFocusable(true);
+        button.setClickable(true);
+        button.setMinimumWidth(size);
+        button.setMinimumHeight(size);
+        button.setBackground(borderColor == null
+            ? doweBackground(backgroundColor, 999f)
+            : doweInputBackground(backgroundColor, borderColor, 999f));
+        icon.setCurrentColor(contentColor);
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER);
+        button.addView(icon, iconParams);
+        return button;
+    }
+
     private android.graphics.drawable.Drawable doweTabLineBackground(int color, String position) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(color);

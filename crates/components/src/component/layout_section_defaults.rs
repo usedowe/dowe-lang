@@ -1,12 +1,11 @@
 #[test]
 fn derives_section_axis_padding_defaults_and_preserves_overrides() {
     let default_spacing = section_content_spacing(&SpacingProps::default());
-    let horizontal = default_spacing.px.expect("default horizontal padding");
-    let vertical = default_spacing.py.expect("default vertical padding");
-    assert_eq!(horizontal.entries[0].value, ScaleValue::from_half_steps(8));
-    assert_eq!(horizontal.entries[1].value, ScaleValue::from_half_steps(12));
-    assert_eq!(vertical.entries[0].value, ScaleValue::from_half_steps(20));
-    assert_eq!(vertical.entries[1].value, ScaleValue::from_half_steps(32));
+    let padding = default_spacing.p.expect("default padding");
+    assert_eq!(padding.entries[0].breakpoint, Breakpoint::Xs);
+    assert_eq!(padding.entries[0].value, ScaleValue::from_half_steps(8));
+    assert_eq!(padding.entries[1].breakpoint, Breakpoint::Lg);
+    assert_eq!(padding.entries[1].value, ScaleValue::from_half_steps(10));
 
     let authored = SpacingProps {
         py: Some(super::ResponsiveValue::scalar(ScaleValue::from_half_steps(
@@ -21,6 +20,6 @@ fn derives_section_axis_padding_defaults_and_preserves_overrides() {
     );
     assert_eq!(
         effective.px.expect("default horizontal padding").entries[1].value,
-        ScaleValue::from_half_steps(12)
+        ScaleValue::from_half_steps(10)
     );
 }

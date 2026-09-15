@@ -8,14 +8,14 @@ r#"private fun DoweTable(state: DoweReactiveState, dataPath: String, columns: Li
             .background(backgroundColor)
             .then(if (bordered || borderColor != null) Modifier.border(1.dp, borderColor ?: DoweDesign.surfaceText.copy(alpha = 0.28f), shape) else Modifier)
     ) {
-        val minimumWidth = doweTableMinimumWidth(columns)
+        val minimumWidth = doweTableMinimumWidth(columns, metrics)
         val tableWidth = maxOf(maxWidth, minimumWidth)
         val columnExpansion = (tableWidth - minimumWidth) / columns.size.coerceAtLeast(1).toFloat()
         Box(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
             Column(modifier = Modifier.width(tableWidth)) {
                 Row(modifier = Modifier.fillMaxWidth().background(DoweDesign.muted)) {
                     columns.forEach { column ->
-                        Box(modifier = Modifier.width(doweTableColumnWidth(column.width) + columnExpansion).padding(horizontal = metrics.horizontalPadding, vertical = metrics.headerVerticalPadding), contentAlignment = doweTableBoxAlignment(column.align)) {
+                        Box(modifier = Modifier.width(doweTableColumnWidth(column.width) + metrics.horizontalPadding * 2 + columnExpansion).padding(horizontal = metrics.horizontalPadding, vertical = metrics.headerVerticalPadding), contentAlignment = doweTableBoxAlignment(column.align)) {
                             Text(
                                 text = column.label,
                                 color = contentColor,
@@ -40,7 +40,7 @@ r#"private fun DoweTable(state: DoweReactiveState, dataPath: String, columns: Li
                         Row(modifier = Modifier.fillMaxWidth().background(if (striped && index % 2 == 1) DoweDesign.surfaceText.copy(alpha = 0.12f) else Color.Transparent)) {
                             columns.forEachIndexed { columnIndex, column ->
                                 Box(
-                                    modifier = Modifier.width(doweTableColumnWidth(column.width) + columnExpansion),
+                                    modifier = Modifier.width(doweTableColumnWidth(column.width) + metrics.horizontalPadding * 2 + columnExpansion),
                                     contentAlignment = doweTableBoxAlignment(column.align)
                                 ) {
                                     Text(
@@ -94,8 +94,8 @@ private fun doweTableColumnWidth(width: String?): Dp {
     }
 }
 
-private fun doweTableMinimumWidth(columns: List<DoweTableColumn>): Dp =
-    columns.fold(0.dp) { total, column -> total + doweTableColumnWidth(column.width) }
+private fun doweTableMinimumWidth(columns: List<DoweTableColumn>, metrics: DoweTableMetrics): Dp =
+    columns.fold(0.dp) { total, column -> total + doweTableColumnWidth(column.width) + metrics.horizontalPadding * 2 }
 
 private fun doweTableBoxAlignment(align: DoweTableColumnAlign): Alignment =
     when (align) {

@@ -422,18 +422,17 @@ function scrollCarouselSlide(root, slide, behavior = "smooth") {
   if (!viewport || !slide) return;
   const vertical = root.dataset.doweCarouselOrientation === "vertical",
     frame = viewport.getBoundingClientRect(),
-    item = slide.getBoundingClientRect();
+    item = slide.getBoundingClientRect(),
+    offset = vertical
+      ? item.top - frame.top - (frame.height - item.height) / 2
+      : item.left - frame.left - (frame.width - item.width) / 2;
   if (vertical) {
-    const top =
-      viewport.scrollTop +
-      (item.top - frame.top) -
-      (frame.height - item.height) / 2;
+    const top = viewport.scrollTop + offset;
     viewport.scrollTo({ top, behavior });
+  } else if (root.dataset.doweCarouselVariant === "rtl") {
+    viewport.scrollBy({ left: offset, behavior });
   } else {
-    const left =
-      viewport.scrollLeft +
-      (item.left - frame.left) -
-      (frame.width - item.width) / 2;
+    const left = viewport.scrollLeft + offset;
     viewport.scrollTo({ left, behavior });
   }
 }

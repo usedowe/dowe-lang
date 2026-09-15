@@ -15,7 +15,7 @@ use dowe_components::{
     Justify, LayoutProps, LineChartProps, MapMarker, MapProps, MapWaypoint, MarqueeProps,
     MicrophoneProps, ModalProps, NativeExternalMode, NavMenuItem, NavMenuItemProps, NavMenuProps,
     NavigationAction, NavigationOperation, OverlayEntry, OverlayItemProps, OverlayPaint,
-    PasswordProps, PhoneProps, PieChartProps, PinKind, PinProps, RadioGroupProps, RadioOption,
+    PasswordProps, PaginationControlContract, PaginationVariant, PhoneProps, PieChartProps, PinKind, PinProps, RadioGroupProps, RadioOption,
     RailNavItem, RailNavItemProps, RailNavProps, RecordProps, ResponsiveValue, RichTextMark,
     ScaffoldProps, ScaleValue, SectionBackground, SelectOption, SelectOptionEach, ShadowSize,
     SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps, SidebarProps, SizeValue,

@@ -72,15 +72,14 @@ private fun DoweDropzone(label: String?, placeholder: String, accept: String?, m
             modifier = Modifier
                 .fillMaxWidth()
                 .height(height)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(DoweDesign.radius))
                 .background(backgroundColor)
-                .border(2.dp, borderColor ?: contentColor.copy(alpha = 0.55f), RoundedCornerShape(12.dp))
+                .border(2.dp, borderColor ?: contentColor.copy(alpha = 0.55f), RoundedCornerShape(DoweDesign.radius))
                 .clickable(enabled = !disabled, onClick = launchPicker)
                 .then(if (disabled) Modifier.graphicsLayer { alpha = 0.5f } else Modifier),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(if (selectedFiles.isEmpty()) "Upload" else "Selected files", color = contentColor.copy(alpha = 0.55f), fontWeight = FontWeight.SemiBold)
                 if (selectedFiles.isEmpty()) {
                     Text(placeholder, color = contentColor.copy(alpha = 0.7f), fontSize = 14.sp)
                 } else {

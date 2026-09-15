@@ -131,3 +131,16 @@ fn generates_android_raycast3d_game_runtime_for_compose_and_dev() {
         assert!(dev.content.contains(contract), "missing raycast launcher contract: {contract}");
     }
 }
+
+#[test]
+fn android_raycast_mount_preserves_route_scroll() {
+    let runtime = super::dev_activity_game_raycast_runtime();
+    let factory = diagram_java_method(runtime, "private DoweRaycastView doweRaycastGame(");
+    assert!(
+        !factory.contains("requestFocus"),
+        "Mounting Game must not steal focus after the route resets its scroll"
+    );
+    let touch = diagram_java_method(runtime, "public boolean onTouchEvent(");
+    assert!(touch.contains("if (masked == MotionEvent.ACTION_DOWN) { requestFocus();"));
+    assert!(runtime.contains("setFocusable(onKey != null || \"doom\".equals(controls))"));
+}

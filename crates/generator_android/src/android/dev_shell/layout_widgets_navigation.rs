@@ -99,9 +99,12 @@ r#"        DoweTreeIcon(float minX, float minY, float width, float height, Array
         row.setFocusable(true);
         row.setBackground(doweBackground(isSelected ? doweAlpha(tree.contentColor, 0.14f) : Color.TRANSPARENT, Math.min(tree.radius, doweDp(5))));
         for (int index = 0; index < depth; index += 1) {
-            View indent = new View(this);
-            doweAdd(row, indent, 0, true);
+            android.widget.FrameLayout indent = new android.widget.FrameLayout(this);
             indent.setLayoutParams(new LinearLayout.LayoutParams(doweDp(16), doweDp(28)));
+            View guide = new View(this);
+            guide.setBackgroundColor(doweAlpha(tree.contentColor, 0.16f));
+            indent.addView(guide, new android.widget.FrameLayout.LayoutParams(doweDp(1), doweDp(28), android.view.Gravity.END));
+            doweAdd(row, indent, 0, true);
         }
         if (node.branch) {
             DoweSvgView toggle = doweTreeIcon(tree.arrowIcon, doweAlpha(tree.contentColor, 0.72f));
@@ -156,7 +159,7 @@ r#"        DoweTreeIcon(float minX, float minY, float width, float height, Array
         scroll.setFillViewport(true);
         LinearLayout table = doweContainer(false);
         table.setLayoutParams(new HorizontalScrollView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        table.setMinimumWidth(doweTableMinimumWidth(widths));
+        table.setMinimumWidth(doweTableMinimumWidth(widths, tableSize));
         LinearLayout header = doweTableRow();
         header.setBackgroundColor(DOWE_MUTED);
         for (int index = 0; index < labels.length; index += 1) {
@@ -215,12 +218,12 @@ r#"        DoweTreeIcon(float minX, float minY, float width, float height, Array
     private TextView doweTableCell(String value, int color, int tableSize, boolean header, int gravity, String width, boolean reserveSeparator) {
         float textSize = tableSize == 2 ? 16f : tableSize == 0 ? 12f : 14f;
         TextView cell = doweText(value, color, textSize, header ? 700 : 400, 0f, 1.25f, "sans");
-        int horizontal = tableSize == 2 ? 20 : tableSize == 0 ? 12 : 16;
+        int horizontal = doweTableHorizontalPadding(tableSize);
         int vertical = tableSize == 2 ? (header ? 16 : 20) : tableSize == 0 ? 8 : (header ? 12 : 16);
         cell.setGravity(gravity | Gravity.CENTER_VERTICAL);
         cell.setSingleLine(true);
         cell.setPadding(doweDp(horizontal), doweDp(vertical), doweDp(horizontal), doweDp(vertical));
-        cell.setLayoutParams(new LinearLayout.LayoutParams(doweTableColumnWidth(width) - (reserveSeparator ? doweDp(1) : 0), ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        cell.setLayoutParams(new LinearLayout.LayoutParams(doweTableColumnWidth(width) + doweDp(horizontal * 2) - (reserveSeparator ? doweDp(1) : 0), ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         return cell;
     }
 
@@ -247,10 +250,14 @@ r#"        DoweTreeIcon(float minX, float minY, float width, float height, Array
         return doweDp(160);
     }
 
-    private int doweTableMinimumWidth(String[] widths) {
+    private int doweTableHorizontalPadding(int tableSize) {
+        return tableSize == 2 ? 20 : tableSize == 0 ? 12 : 16;
+    }
+
+    private int doweTableMinimumWidth(String[] widths, int tableSize) {
         int value = 0;
         for (String width : widths) {
-            value += doweTableColumnWidth(width);
+            value += doweTableColumnWidth(width) + doweDp(doweTableHorizontalPadding(tableSize) * 2);
         }
         return value;
     }

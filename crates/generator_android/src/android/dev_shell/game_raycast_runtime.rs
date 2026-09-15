@@ -4,7 +4,6 @@ fn dev_activity_game_raycast_runtime() -> &'static str {
         view.setContentDescription(label);
         view.setMinimumHeight(doweDp(180));
         view.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(180)));
-        if (onKey != null) view.post(view::requestFocus);
         return view;
     }
 

@@ -97,23 +97,11 @@ impl ButtonSize {
     }
 
     pub fn icon_button_control_size(self) -> ScaleValue {
-        match self {
-            Self::Xs => ScaleValue::from_half_steps(12),
-            Self::Sm => ScaleValue::from_half_steps(16),
-            Self::Md => ScaleValue::from_half_steps(20),
-            Self::Lg => ScaleValue::from_half_steps(24),
-            Self::Xl => ScaleValue::from_half_steps(28),
-        }
+        ScaleValue::from_half_steps(IconButtonGeometryContract::for_size(self).control_size / 2)
     }
 
     pub fn icon_button_icon_size(self) -> ScaleValue {
-        match self {
-            Self::Xs => ScaleValue::from_half_steps(8),
-            Self::Sm => ScaleValue::from_half_steps(10),
-            Self::Md => ScaleValue::from_half_steps(12),
-            Self::Lg => ScaleValue::from_half_steps(16),
-            Self::Xl => ScaleValue::from_half_steps(20),
-        }
+        ScaleValue::from_half_steps(IconButtonGeometryContract::for_size(self).icon_size / 2)
     }
 
     pub fn chip_icon_size(self) -> ScaleValue {

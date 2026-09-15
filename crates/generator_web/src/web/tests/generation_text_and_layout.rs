@@ -39,7 +39,10 @@ fn generates_shared_reactive_typography_for_web() {
     let html = render_page_body(&ViewNode::Children, &tree);
     assert!(html.contains("dowe-text-size-binding-textSize01"));
     let chunks = super::runtime_chunks_for_trees(&ViewNode::Children, &tree);
-    assert_eq!(chunks.iter().map(|chunk| chunk.name).collect::<Vec<_>>(), vec!["styles"]);
+    assert_eq!(
+        chunks.iter().map(|chunk| chunk.name).collect::<Vec<_>>(),
+        vec!["styles"]
+    );
     assert!(chunks[0].content.contains("doweDynamicTextSize"));
     assert!(chunks[0].content.contains("\"9xl\""));
     assert!(chunks[0].content.contains("preferredViewport"));
@@ -114,7 +117,7 @@ fn renders_section_markup_and_background_css() {
 
     assert!(html.contains("<section"));
     assert!(html.contains(
-        "<div class=\"section-body is-boxed px-4 md:px-6 py-10 md:py-16\"><p class=\"dowe-text text-md\">Hero</p></div>"
+        "<div class=\"section-body is-boxed p-4 lg:p-5\"><p class=\"dowe-text text-md\">Hero</p></div>"
     ));
     assert!(!html.contains("<section class=\"section is-boxed"));
     assert!(html.contains(
@@ -127,11 +130,11 @@ fn renders_section_markup_and_background_css() {
     assert!(page.css_content.contains("@media (min-width:768px)"));
     let base_vertical_padding = page
         .css_content
-        .find(".py-10{padding-top:2.5rem;padding-bottom:2.5rem;}")
+        .find(".p-4{padding:1rem;}")
         .expect("base section vertical padding");
     let responsive_vertical_padding = page
         .css_content
-        .rfind(".md\\:py-16{padding-top:4rem;padding-bottom:4rem;}")
+        .rfind(".lg\\:p-5{padding:1.25rem;}")
         .expect("responsive section vertical padding");
     assert!(base_vertical_padding < responsive_vertical_padding);
     let design_css = super::design_css();
@@ -175,7 +178,7 @@ fn makes_height_bounded_section_body_available_to_full_height_children() {
     let html = render_page_body(&ViewNode::Children, &page_tree);
 
     assert!(html.contains("min-h-vh-0"));
-    assert!(html.contains("section-body section-body-has-height px-4 md:px-6 py-10 md:py-16"));
+    assert!(html.contains("section-body section-body-has-height p-4 lg:p-5"));
     assert!(html.contains("min-h-full"));
     assert!(page.css_content.contains(".min-h-full"));
     let design_css = super::design_css();
@@ -331,14 +334,12 @@ fn emits_responsive_auto_and_full_height_constraints_for_containers() {
     assert!(page.css_content.contains(".min-h-auto{min-height:auto;}"));
     assert!(page.css_content.contains(".max-h-auto{max-height:auto;}"));
     assert!(page.css_content.contains(".md\\:h-full{height:100%;}"));
-    assert!(
-        page.css_content
-            .contains(".md\\:min-h-full{min-height:100%;}")
-    );
-    assert!(
-        page.css_content
-            .contains(".md\\:max-h-full{max-height:100%;}")
-    );
+    assert!(page
+        .css_content
+        .contains(".md\\:min-h-full{min-height:100%;}"));
+    assert!(page
+        .css_content
+        .contains(".md\\:max-h-full{max-height:100%;}"));
 }
 
 #[test]
@@ -363,14 +364,12 @@ fn renders_flex_defaults_with_full_width_and_auto_height() {
 
     assert!(html.contains("class=\"flex direction-row justify-center align-center\""));
     assert!(design_css.contains(".flex{--dowe-component-display:flex;display:var(--dowe-show,var(--dowe-component-display));width:100%;height:auto;}"));
-    assert!(
-        page.css_content
-            .contains(".justify-center{justify-content:center;}")
-    );
-    assert!(
-        page.css_content
-            .contains(".align-center{align-items:center;}")
-    );
+    assert!(page
+        .css_content
+        .contains(".justify-center{justify-content:center;}"));
+    assert!(page
+        .css_content
+        .contains(".align-center{align-items:center;}"));
 }
 
 #[test]
@@ -433,14 +432,12 @@ fn renders_flex_end_inside_cover_card() {
     assert!(html.contains("has-cover"));
     assert!(html.contains("has-overlay"));
     assert!(html.contains("min-h-60 direction-column justify-end gap-2"));
-    assert!(
-        page.css_content
-            .contains(".justify-end{justify-content:flex-end;}")
-    );
+    assert!(page
+        .css_content
+        .contains(".justify-end{justify-content:flex-end;}"));
     assert!(page.css_content.contains(".min-h-60{min-height:15rem;}"));
-    assert!(
-        page.css_content
-            .contains("background-image:url(\"https://images.example/card.jpg\")")
-    );
+    assert!(page
+        .css_content
+        .contains("background-image:url(\"https://images.example/card.jpg\")"));
     assert!(page.css_content.contains("rgba(0,0,0,0.62)"));
 }

@@ -1,0 +1,17 @@
+component ProofMetrics
+  Grid columns:{ xs:2 md:3 } gap:{ xs:4 md:8 } maxW:"4xl"
+    Flex direction:"column" gap:1
+      Title size:"3xl"
+        "1B"
+      Text size:"sm"
+        "Supply máximo"
+    Flex direction:"column" gap:1
+      Title size:"3xl"
+        "US$0,01"
+      Text size:"sm"
+        "Precio Genesis"
+    Flex direction:"column" gap:1
+      Title size:"3xl"
+        "30%"
+      Text size:"sm"
+        "Protección inicial"

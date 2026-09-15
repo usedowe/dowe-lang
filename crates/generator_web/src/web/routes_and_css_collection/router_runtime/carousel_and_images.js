@@ -1,3 +1,10 @@
+function carouselUsesSnap(root) {
+  const configured = root?.dataset?.doweCarouselSnap;
+  if (configured !== undefined) return configured === "true";
+  return !["simple", "masonry", "rtl", "sticky"].includes(
+    root?.dataset?.doweCarouselVariant
+  );
+}
 function renderCarouselEffects(root, viewport, slides) {
   if (!viewport || !slides.length) return;
   const vertical = root.dataset.doweCarouselOrientation === "vertical",
@@ -71,11 +78,12 @@ function renderCarousel(root) {
   });
   for (const indicator of root.querySelectorAll(
     "[data-dowe-carousel-indicator]"
-  ))
-    indicator.classList.toggle(
-      "is-active",
-      Number(indicator.dataset.doweCarouselIndicator) === index
-    );
+  )) {
+    const active = Number(indicator.dataset.doweCarouselIndicator) === index;
+    indicator.classList.toggle("is-active", active);
+    if (active) indicator.setAttribute("aria-current", "true");
+    else indicator.removeAttribute("aria-current");
+  }
   const loop = root.dataset.doweCarouselLoop === "true";
   for (const button of root.querySelectorAll("[data-dowe-carousel-prev]")) {
     const disabled = !loop && index === 0;
@@ -98,14 +106,15 @@ function syncCarousel(root) {
   );
   if (!viewport || !slides.length) return;
   const vertical = root.dataset.doweCarouselOrientation === "vertical",
+    rtl = root.dataset.doweCarouselVariant === "rtl",
     position = Math.abs(vertical ? viewport.scrollTop : viewport.scrollLeft),
     maximum = vertical
       ? viewport.scrollHeight - viewport.clientHeight
       : viewport.scrollWidth - viewport.clientWidth,
     edge = 8;
   let best = 0;
-  if (position <= edge) best = 0;
-  else if (maximum - position <= edge) best = slides.length - 1;
+  if (!rtl && position <= edge) best = 0;
+  else if (!rtl && maximum - position <= edge) best = slides.length - 1;
   else {
     const frame = viewport.getBoundingClientRect(),
       center = vertical
@@ -174,8 +183,9 @@ function hydrateCarousels(root) {
         );
         viewport.addEventListener("keydown", event => {
           const vertical = carousel.dataset.doweCarouselOrientation === "vertical";
-          const previous = vertical ? "ArrowUp" : "ArrowLeft";
-          const next = vertical ? "ArrowDown" : "ArrowRight";
+          const rtl = carousel.dataset.doweCarouselVariant === "rtl";
+          const previous = vertical ? "ArrowUp" : rtl ? "ArrowRight" : "ArrowLeft";
+          const next = vertical ? "ArrowDown" : rtl ? "ArrowLeft" : "ArrowRight";
           let step = event.key === previous ? -1 : event.key === next ? 1 : 0;
           if (event.key === "Home") step = -Infinity;
           if (event.key === "End") step = Infinity;
@@ -241,11 +251,7 @@ function hydrateCarousels(root) {
           viewport.classList.remove("is-dragging");
           if (wasDragging) {
             syncCarousel(carousel);
-            if (
-              !["simple", "masonry", "rtl", "sticky"].includes(
-                carousel.dataset.doweCarouselVariant
-              )
-            )
+            if (carouselUsesSnap(carousel))
               goToCarousel(
                 carousel,
                 Number(carousel.dataset.doweCarouselIndex || 0)

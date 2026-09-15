@@ -81,12 +81,12 @@ fn swift_runtime_tree() -> String {
         let open = openIds[node.id] ?? defaultOpen
         let isSelected = !node.branch && selected == node.path
         return AnyView(VStack(alignment: .leading, spacing: CGFloat(0)) {
-            HStack(spacing: CGFloat(4)) {
+            HStack(spacing: CGFloat(0)) {
                 ForEach(0..<depth, id: \.self) { _ in
                     Rectangle()
                         .fill(contentColor.opacity(0.16))
                         .frame(width: CGFloat(1), height: CGFloat(28))
-                        .frame(width: CGFloat(15), height: CGFloat(28), alignment: .trailing)
+                        .frame(width: CGFloat(16), height: CGFloat(28), alignment: .trailing)
                 }
                 Button(action: { if node.branch { toggleNode(node.id, open: open) } }) {
                     if node.branch {

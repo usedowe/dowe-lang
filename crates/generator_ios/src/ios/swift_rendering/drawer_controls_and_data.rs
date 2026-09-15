@@ -35,13 +35,37 @@ fn render_swift_pagination(
         .unwrap_or_else(|| items.len().max(1).to_string());
     let previous = solar_control_icon("arrow-left").expect("bundled Pagination previous icon");
     let next = solar_control_icon("arrow-right").expect("bundled Pagination next icon");
+    let pagination_contract = props
+        .pagination
+        .as_ref()
+        .map(|pagination| pagination.control_contract(props.size))
+        .unwrap_or_else(|| PaginationControlContract::for_size(props.size));
+    let control_literal = format!(
+        "DowePaginationControlContract(controlSize: CGFloat({}), indicatorGap: CGFloat({}), indicatorHeight: CGFloat({}), indicatorInactiveWidth: CGFloat({}), indicatorActiveWidth: CGFloat({}), indicatorDotSize: CGFloat({}), indicatorDotActiveScale: CGFloat({}))",
+        pagination_contract.control_size,
+        pagination_contract.indicator_gap,
+        pagination_contract.indicator_height,
+        pagination_contract.indicator_inactive_width,
+        pagination_contract.indicator_active_width,
+        pagination_contract.indicator_dot_size,
+        f32::from(pagination_contract.indicator_dot_active_scale_percent) / 100.0,
+    );
     output.push_str(&format!(
-        "{pad}DowePagination(value: {binding}, pageCount: {page_count}, size: {}, disabled: {}, ariaLabel: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, onChange: {}, previousIcon: {{\n",
+        "{pad}DowePagination(value: {binding}, pageCount: {page_count}, size: {}, control: {}, paginationVariant: {}, disabled: {}, ariaLabel: {}, backgroundColor: {}, contentColor: {}, accentColor: {}, borderColor: {}, onChange: {}, previousIcon: {{\n",
         swift_string_literal(props.size.as_str()),
+        control_literal,
+        swift_string_literal(
+            props
+                .pagination
+                .as_ref()
+                .map(|pagination| pagination.variant.as_str())
+                .unwrap_or("pages"),
+        ),
         props.disabled,
         swift_optional_literal(props.aria_label.as_deref()),
         card_variant_container(&props.style),
         card_variant_content(&props.style),
+        color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Primary))),
         swift_variant_border(&props.style),
         swift_optional_component_action(props.on_change.as_deref(), None, context),
     ));

@@ -96,6 +96,7 @@ fn compose_design_base_css(
     append_css(&mut css, &[DESIGN_RESET_CSS]);
     append_visibility_base_css(&mut css);
     append_css(&mut css, &[DESIGN_FOUNDATION_CSS]);
+    css.push_str(&icon_button_geometry_css());
     let motion_css = DESIGN_MOTION_CSS
         .replace(
             "__DOWE_PAGE_TRANSITION_DURATION__",
@@ -124,6 +125,7 @@ fn append_root_css(
     include_form_metrics: bool,
 ) {
     css.push_str(":root{");
+    append_visual_contract_variables(css);
     append_theme_variables(css, design_config.default_theme());
     for font in fonts {
         append_custom_property(css, &format!("dowe-font-{}", font.as_str()), font_stack(*font));
@@ -155,6 +157,109 @@ fn append_root_css(
             css.push('}');
         }
     }
+}
+
+fn append_visual_contract_variables(css: &mut String) {
+    let chip = dowe_components::ChipVisualContract::for_size(ButtonSize::Md);
+    let skeleton = dowe_components::SkeletonVisualContract::standard();
+    let empty = dowe_components::EmptyVisualContract::standard();
+    let alert = dowe_components::AlertVisualContract::standard();
+    let button = dowe_components::ButtonVisualContract::for_size(ButtonSize::Md);
+    let tabs = dowe_components::TabsVisualContract::standard();
+    let stepper = dowe_components::StepperVisualContract::standard();
+    let accordion = dowe_components::AccordionVisualContract::standard();
+    let form = dowe_components::FormControlVisualContract::standard();
+    let feedback = dowe_components::FeedbackSurfaceVisualContract::standard();
+    let card = dowe_components::CardVisualContract::standard();
+    let table = dowe_components::TableVisualContract::standard();
+    let avatar = dowe_components::AvatarVisualContract::standard();
+    let loading = dowe_components::LoadingVisualContract::standard();
+    let media = dowe_components::MediaVisualContract::standard();
+    let visualization = dowe_components::VisualizationVisualContract::standard();
+    let shell = dowe_components::NavigationShellVisualContract::standard();
+    let menu = dowe_components::MenuVisualContract::standard();
+    let date = dowe_components::DatePickerVisualContract::standard();
+    let progress = dowe_components::ProgressVisualContract::standard();
+    let banner = dowe_components::BannerVisualContract::standard();
+    let state = dowe_components::InteractionStateVisualContract::standard();
+    append_custom_property(css, "chip-height-md", &format!("{}px", chip.height));
+    append_custom_property(css, "chip-padding-md", &format!("{}px", chip.horizontal_padding));
+    append_custom_property(css, "chip-text-md", &format!("{}px", chip.text_size));
+    append_custom_property(css, "divider-thickness", &format!("{}px", dowe_components::DividerVisualContract::standard().thickness));
+    append_custom_property(css, "skeleton-text-height", &format!("{}px", skeleton.text_height));
+    append_custom_property(css, "skeleton-pulse-alpha", &skeleton.pulse_alpha.to_string());
+    append_custom_property(css, "skeleton-pulse-duration", &format!("{}ms", skeleton.pulse_duration_ms));
+    append_custom_property(css, "empty-padding", &format!("{}px", empty.panel_padding));
+    append_custom_property(css, "empty-gap", &format!("{}px", empty.content_gap));
+    append_custom_property(css, "empty-icon-size", &format!("{}px", empty.icon_size));
+    append_custom_property(css, "alert-panel-padding", &format!("{}px", alert.panel_padding));
+    append_custom_property(css, "alert-content-gap", &format!("{}px", alert.content_gap));
+    append_custom_property(css, "alert-close-button-size", &format!("{}px", alert.close_button_size));
+    append_custom_property(css, "button-height-md", &format!("{}px", button.min_height));
+    append_custom_property(css, "button-padding-x-md", &format!("{}px", button.horizontal_padding));
+    append_custom_property(css, "button-padding-y-md", &format!("{}px", button.vertical_padding));
+    append_custom_property(css, "button-text-md", &format!("{}px", button.text_size));
+    append_custom_property(css, "tabs-list-gap", &format!("{}px", tabs.list_gap));
+    append_custom_property(css, "tabs-padding-x", &format!("{}px", tabs.tab_horizontal_padding));
+    append_custom_property(css, "tabs-padding-y", &format!("{}px", tabs.tab_vertical_padding));
+    append_custom_property(css, "tabs-indicator-thickness", &format!("{}px", tabs.indicator_thickness));
+    append_custom_property(css, "stepper-indicator-size", &format!("{}px", stepper.indicator_size));
+    append_custom_property(css, "stepper-connector-thickness", &format!("{}px", stepper.connector_thickness));
+    append_custom_property(css, "accordion-header-height", &format!("{}px", accordion.header_min_height));
+    append_custom_property(css, "accordion-header-padding", &format!("{}px", accordion.header_padding));
+    append_custom_property(css, "accordion-content-padding", &format!("{}px", accordion.content_padding));
+    append_custom_property(css, "form-control-height", &format!("{}px", form.min_height));
+    append_custom_property(css, "form-control-padding-x", &format!("{}px", form.horizontal_padding));
+    append_custom_property(css, "form-control-text-size", &format!("{}px", form.text_size));
+    append_custom_property(css, "form-control-radius", &format!("{}px", form.radius));
+    append_custom_property(css, "selection-control-size", "18px");
+    append_custom_property(css, "selection-disabled-opacity", "0.5");
+    append_custom_property(css, "feedback-panel-padding", &format!("{}px", feedback.panel_padding));
+    append_custom_property(css, "feedback-content-gap", &format!("{}px", feedback.content_gap));
+    append_custom_property(css, "tooltip-padding-x", &format!("{}px", feedback.tooltip_padding_x));
+    append_custom_property(css, "tooltip-padding-y", &format!("{}px", feedback.tooltip_padding_y));
+    append_custom_property(css, "card-padding", &format!("{}px", card.padding));
+    append_custom_property(css, "card-content-gap", &format!("{}px", card.content_gap));
+    append_custom_property(css, "card-border-width", &format!("{}px", card.border_width));
+    append_custom_property(css, "table-header-padding-y", &format!("{}px", table.header_padding_y));
+    append_custom_property(css, "table-cell-padding", &format!("{}px", table.cell_padding));
+    append_custom_property(css, "table-text-size", &format!("{}px", table.text_size));
+    append_custom_property(css, "table-divider-width", &format!("{}px", table.divider_width));
+    append_custom_property(css, "avatar-group-overlap", &format!("{}px", avatar.group_overlap));
+    append_custom_property(css, "avatar-indicator-border", &format!("{}px", avatar.indicator_border));
+    append_custom_property(css, "avatar-counter-border", &format!("{}px", avatar.counter_border));
+    append_custom_property(css, "loading-spinner-size", &format!("{}px", loading.spinner_size));
+    append_custom_property(css, "loading-spinner-stroke", &format!("{}px", loading.stroke_width));
+    append_custom_property(css, "loading-disabled-opacity", &loading.disabled_alpha.to_string());
+    append_custom_property(css, "media-radius", &format!("{}px", media.default_radius));
+    append_custom_property(css, "media-control-size", &format!("{}px", media.control_size));
+    append_custom_property(css, "media-overlay-alpha", &format!("{}%", media.overlay_alpha));
+    append_custom_property(css, "visualization-padding", &format!("{}px", visualization.container_padding));
+    append_custom_property(css, "visualization-grid-width", &format!("{}px", visualization.grid_line_width));
+    append_custom_property(css, "visualization-empty-height", &format!("{}px", visualization.empty_min_height));
+    append_custom_property(css, "navigation-item-height", &format!("{}px", shell.item_min_height));
+    append_custom_property(css, "navigation-item-padding", &format!("{}px", shell.item_padding));
+    append_custom_property(css, "navigation-rail-width", &format!("{}px", shell.rail_width));
+    append_custom_property(css, "navigation-item-gap", &format!("{}px", shell.item_gap));
+    append_custom_property(css, "menu-option-height", &format!("{}px", menu.option_min_height));
+    append_custom_property(css, "menu-option-padding", &format!("{}px", menu.option_padding));
+    append_custom_property(css, "menu-gap", &format!("{}px", menu.menu_gap));
+    append_custom_property(css, "menu-min-width", &format!("{}px", menu.min_width));
+    append_custom_property(css, "date-cell-size", &format!("{}px", date.cell_size));
+    append_custom_property(css, "date-grid-gap", &format!("{}px", date.grid_gap));
+    append_custom_property(css, "date-nav-size", &format!("{}px", date.nav_size));
+    append_custom_property(css, "progress-track-height", &format!("{}px", progress.track_height));
+    append_custom_property(css, "progress-radius", &format!("{}px", progress.radius));
+    append_custom_property(css, "progress-disabled-opacity", &format!("0.{}", progress.disabled_alpha));
+    append_custom_property(css, "banner-padding", &format!("{}px", banner.padding));
+    append_custom_property(css, "banner-content-gap", &format!("{}px", banner.content_gap));
+    append_custom_property(css, "banner-action-height", &format!("{}px", banner.action_height));
+    append_custom_property(css, "banner-disabled-opacity", &format!("0.{}", banner.disabled_alpha));
+    append_custom_property(css, "state-disabled-opacity", &state.disabled_alpha.to_string());
+    append_custom_property(css, "state-focus-ring-width", &format!("{}px", state.focus_ring_width));
+    append_custom_property(css, "state-focus-ring-alpha", &state.focus_ring_alpha.to_string());
+    append_custom_property(css, "state-pressed-scale", &state.pressed_scale.to_string());
+    append_custom_property(css, "state-error-ring-width", &format!("{}px", state.error_ring_width));
 }
 
 fn append_form_metrics(css: &mut String) {

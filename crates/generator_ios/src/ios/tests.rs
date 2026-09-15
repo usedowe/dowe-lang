@@ -88,3 +88,5 @@ fn generates_real_ios_notification_support() {
 include!("tests/static_flex.rs");
 
 include!("tests/scheme_content_inheritance.rs");
+
+include!("tests/carousel_geometry.rs");

@@ -153,8 +153,9 @@ fn render_compose_empty(
 ) {
     let pad = " ".repeat(indent);
     let icon = empty_icon(props.kind).expect("bundled Empty icon");
+    let visual = dowe_components::EmptyVisualContract::standard();
     output.push_str(&format!(
-        "{pad}DoweEmpty(kind = {}, title = {}, description = {}, actionLabel = {}, action = {}, iconViewBox = {}, iconPaths = {}, backgroundColor = {}, contentColor = {}, accentColor = {}, modifier = {})\n",
+        "{pad}DoweEmpty(kind = {}, title = {}, description = {}, actionLabel = {}, action = {}, iconViewBox = {}, iconPaths = {}, panelPadding = {}.dp, contentGap = {}.dp, iconSize = {}.dp, titleSize = {}.sp, descriptionSize = {}.sp, actionHorizontalPadding = {}.dp, actionVerticalPadding = {}.dp, backgroundColor = {}, contentColor = {}, accentColor = {}, modifier = {})\n",
         compose_string_literal(props.kind.as_str()),
         compose_optional_string(props.title.as_deref()),
         compose_optional_string(props.description.as_deref()),
@@ -166,6 +167,13 @@ fn render_compose_empty(
         ),
         compose_svg_view_box(&icon.props.view_box),
         compose_svg_paths(&icon.paths),
+        visual.panel_padding,
+        visual.content_gap,
+        visual.icon_size,
+        visual.title_size,
+        visual.description_size,
+        visual.action_horizontal_padding,
+        visual.action_vertical_padding,
         card_variant_container(&props.style),
         card_variant_content(&props.style),
         color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Primary))),

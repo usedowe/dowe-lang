@@ -159,3 +159,54 @@ fn focused_view_units_carry_default_first_guidance() {
         );
     }
 }
+
+#[test]
+fn focused_marketing_block_units_retrieve_their_own_recipe() {
+    for (id, resource, marker) in [
+        (
+            "views/blocks/hero",
+            "views/references/blocks/hero-editorial.md",
+            "# Editorial split hero",
+        ),
+        (
+            "views/blocks/metrics",
+            "views/references/blocks/proof-metrics.md",
+            "# Compact proof metrics",
+        ),
+        (
+            "views/blocks/split-media",
+            "views/references/blocks/split-media.md",
+            "# Split media section",
+        ),
+        (
+            "views/blocks/opportunity",
+            "views/references/blocks/opportunity-band.md",
+            "# Dark opportunity band",
+        ),
+        (
+            "views/blocks/growth",
+            "views/references/blocks/growth-ladder.md",
+            "# Growth ladder",
+        ),
+        (
+            "views/blocks/cta",
+            "views/references/blocks/media-cta.md",
+            "# Media CTA panel",
+        ),
+        (
+            "views/blocks/faq",
+            "views/references/blocks/faq-editorial.md",
+            "# Editorial FAQ",
+        ),
+        (
+            "views/blocks/contact",
+            "views/references/blocks/contact-panel.md",
+            "# Contact information panel",
+        ),
+    ] {
+        let unit = skill_unit(id).expect("block unit");
+        assert_eq!(unit.resource, resource);
+        assert!(unit.content.contains(marker));
+        assert!(unit.dependencies.contains(&"core".to_string()));
+    }
+}

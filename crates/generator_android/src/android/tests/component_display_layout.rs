@@ -32,14 +32,13 @@ fn keeps_bounded_dev_android_section_content_inside_section_padding() {
         .expect("views");
     let dev = dev_java_source(&output);
 
-    assert!(views.content.contains("DoweSize.ViewportMinus(80.dp)"));
+    assert!(views.content.contains("DoweSize.ViewportMinus(32.dp)"));
     assert!(dev.content.contains(
         "view0Params.height = doweDp(doweResponsiveInt(viewportWidth, doweViewportHeight(0)"
     ));
-    assert!(
-        dev.content
-            .contains("view1Params.height = ViewGroup.LayoutParams.MATCH_PARENT;")
-    );
+    assert!(dev
+        .content
+        .contains("view1Params.height = ViewGroup.LayoutParams.MATCH_PARENT;"));
 }
 
 fn advanced_form_route() -> ViewRoute {
@@ -273,4 +272,3 @@ fn advanced_style(
         ..Default::default()
     }
 }
-

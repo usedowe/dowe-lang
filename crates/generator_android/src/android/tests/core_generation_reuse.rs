@@ -81,20 +81,17 @@ fn keeps_layouts_composed_when_page_reads_layout_state() {
     );
     let dev = dev_java_source(&output);
 
-    assert!(
-        dev.content
-            .contains("ViewGroup doweCreatePageContainer(ViewGroup parent)")
-    );
-    assert!(
-        dev.content
-            .contains(".render(this, doweCreatePageContainer(root));")
-    );
+    assert!(dev
+        .content
+        .contains("ViewGroup doweCreatePageContainer(ViewGroup parent)"));
+    assert!(dev
+        .content
+        .contains(".render(this, doweCreatePageContainer(root));"));
     assert!(!dev.content.contains("final class DoweDevLayout0"));
     assert!(!dev.content.contains("private static void renderPage("));
-    assert!(
-        dev.content
-            .contains("doweTextValue(\"layout.message\", null)")
-    );
+    assert!(dev
+        .content
+        .contains("doweTextValue(\"layout.message\", null)"));
 }
 
 #[test]
@@ -132,14 +129,12 @@ fn reuses_stateful_dev_layout_when_page_does_not_read_layout_state() {
 
     assert!(dev.content.contains("final class DoweDevLayout0"));
     assert!(dev.content.contains("private static void renderPage("));
-    assert!(
-        dev.content
-            .contains("DoweDevLayout0.render(this, root, pageRoot -> renderPage(this, pageRoot));")
-    );
-    assert!(
-        dev.content
-            .contains("dowePutInitial(\"layout.open\", false);")
-    );
+    assert!(dev
+        .content
+        .contains("DoweDevLayout0.render(this, root, pageRoot -> renderPage(this, pageRoot));"));
+    assert!(dev
+        .content
+        .contains("dowePutInitial(\"layout.open\", false);"));
 }
 
 #[test]
@@ -156,18 +151,15 @@ fn reuses_stateful_scaffold_drawer_layout_when_page_mentions_binding_literals() 
 
     assert!(dev.content.contains("final class DoweDevLayout0"));
     assert!(dev.content.contains("private static void renderPage("));
-    assert!(
-        dev.content
-            .contains("DoweDevLayout0.render(this, root, pageRoot -> renderPage(this, pageRoot));")
-    );
-    assert!(
-        dev.content
-            .contains("dowePutInitial(\"layout.drawer.open\", false);")
-    );
-    assert!(
-        dev.content
-            .contains("dowePutInitial(\"layout.drawer.visible\", true);")
-    );
+    assert!(dev
+        .content
+        .contains("DoweDevLayout0.render(this, root, pageRoot -> renderPage(this, pageRoot));"));
+    assert!(dev
+        .content
+        .contains("dowePutInitial(\"layout.drawer.open\", false);"));
+    assert!(dev
+        .content
+        .contains("dowePutInitial(\"layout.drawer.visible\", true);"));
     assert!(
         dev.content
             .contains("doweActions.put(\"layout.drawer.open.action\", DoweAction.assign(\"layout.drawer.open\", \"layout.drawer.visible\"));")
@@ -216,53 +208,48 @@ fn generates_compose_and_dev_section_backgrounds() {
         .find(|file| file.relative_path.ends_with("DowePages.kt"))
         .expect("views");
 
-    assert!(
-        views
-            .content
-            .contains("private enum class DoweSectionBackground")
-    );
+    assert!(views
+        .content
+        .contains("private enum class DoweSectionBackground"));
     assert!(views.content.contains("DoweSectionBackgroundBox("));
     assert!(views.content.contains(
         "Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter)"
     ));
-    assert!(
-        views.content.contains(
-            "Column(modifier = Modifier.widthIn(max = 1536.dp).fillMaxWidth().dowePadding"
-        )
-    );
-    assert!(views.content.contains("Column(modifier = Modifier.dowePadding(all = null, horizontal = doweResponsive(viewportWidth, xs = 16.dp, md = 24.dp), vertical = doweResponsive(viewportWidth, xs = 40.dp, md = 64.dp)"));
+    assert!(views
+        .content
+        .contains("Column(modifier = Modifier.widthIn(max = 1536.dp).fillMaxWidth().dowePadding"));
+    assert!(views.content.contains("Column(modifier = Modifier.dowePadding(all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp), horizontal = null, vertical = null, start = null, end = null, top = null, bottom = null)"));
     assert!(views.content.contains("background = doweResponsive(viewportWidth, xs = DoweSectionBackground.Aurora, md = DoweSectionBackground.Ocean)"));
-    assert!(views.content.contains("Brush.linearGradient(listOf(DoweDesign.primary, DoweDesign.secondary, DoweDesign.accent))"));
+    assert!(views.content.contains(
+        "Brush.linearGradient(listOf(DoweDesign.primary, DoweDesign.secondary, DoweDesign.accent))"
+    ));
     assert!(views.content.contains("DoweCoverBox("));
     assert!(views.content.contains("https://example.com/hero.jpg"));
-    assert!(
-        views
-            .content
-            .contains("DoweOverlay.Solid(Color.Black.copy(alpha = 0.35f))")
-    );
+    assert!(views
+        .content
+        .contains("DoweOverlay.Solid(Color.Black.copy(alpha = 0.35f))"));
 
     let dev = dev_java_source(&output);
-    assert!(
-        dev.content
-            .contains("private GradientDrawable doweSectionBackground(String value)")
-    );
+    assert!(dev
+        .content
+        .contains("private GradientDrawable doweSectionBackground(String value)"));
     assert!(
         dev.content
             .contains("String view1SectionBackground = doweResponsiveString(viewportWidth, \"aurora\", null, \"ocean\", null, null)")
     );
-    assert!(
-        dev.content
-            .contains("view1.setBackground(doweSectionBackground(view1SectionBackground));")
-    );
+    assert!(dev
+        .content
+        .contains("view1.setBackground(doweSectionBackground(view1SectionBackground));"));
     assert!(dev.content.contains("doweBoxedContainer(1536)"));
-    assert!(
-        dev.content
-            .contains("PaddingX = doweResponsiveInt(viewportWidth, 16, null, 24, null, null)")
-    );
-    assert!(
-        dev.content
-            .contains("PaddingY = doweResponsiveInt(viewportWidth, 40, null, 64, null, null)")
-    );
+    assert!(dev
+        .content
+        .contains("Padding = doweResponsiveInt(viewportWidth, 16"));
+    assert!(!dev
+        .content
+        .contains("PaddingX = doweResponsiveInt(viewportWidth, 16"));
+    assert!(!dev
+        .content
+        .contains("PaddingY = doweResponsiveInt(viewportWidth, 16"));
 }
 
 #[test]
@@ -287,7 +274,11 @@ fn gives_android_layout_and_page_signals_separate_route_lifecycles() {
     };
     let page = |id: &str, name: &str, label: &str| ViewNode::Scope {
         constants: Vec::new(),
-        signals: vec![lifecycle_signal(id, name, ViewSignalValue::String(String::new()))],
+        signals: vec![lifecycle_signal(
+            id,
+            name,
+            ViewSignalValue::String(String::new()),
+        )],
         actions: Vec::new(),
         children: vec![text(label)],
     };
@@ -316,7 +307,9 @@ fn gives_android_layout_and_page_signals_separate_route_lifecycles() {
         .iter()
         .find(|file| file.relative_path.ends_with("DowePages.kt"))
         .expect("generated Compose pages");
-    assert!(views.content.contains("private fun DoweLayoutState(key: String?, context: Context)"));
+    assert!(views
+        .content
+        .contains("private fun DoweLayoutState(key: String?, context: Context)"));
     assert!(views.content.contains("\"/login\" -> \"layout:0\""));
     assert!(views.content.contains("\"/signup\" -> \"layout:0\""));
     assert!(views.content.contains("\"/settings\" -> \"layout:1\""));
@@ -327,9 +320,15 @@ fn gives_android_layout_and_page_signals_separate_route_lifecycles() {
     assert!(dev.content.contains("dowePrepareState(\"/login\", \"layout:0\", new String[] {\"layout.open\"}, new String[] {\"page.login\"}"));
     assert!(dev.content.contains("dowePrepareState(\"/signup\", \"layout:0\", new String[] {\"layout.open\"}, new String[] {\"page.signup\"}"));
     assert!(dev.content.contains("dowePrepareState(\"/settings\", \"layout:1\", new String[] {\"layout.settings\"}, new String[] {\"page.settings\"}"));
-    assert!(dev.content.contains("boolean layoutChanged = !layoutKey.equals(doweMountedLayout);"));
-    assert!(dev.content.contains("for (String id : layoutSignals) doweResetSignal(id);"));
-    assert!(dev.content.contains("for (String id : pageSignals) doweResetSignal(id);"));
+    assert!(dev
+        .content
+        .contains("boolean layoutChanged = !layoutKey.equals(doweMountedLayout);"));
+    assert!(dev
+        .content
+        .contains("for (String id : layoutSignals) doweResetSignal(id);"));
+    assert!(dev
+        .content
+        .contains("for (String id : pageSignals) doweResetSignal(id);"));
     assert!(dev
         .content
         .contains("if (metadata != null && \"global\".equals(metadata[1])) {"));

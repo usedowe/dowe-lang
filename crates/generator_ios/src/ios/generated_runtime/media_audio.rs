@@ -80,10 +80,10 @@ struct DoweAudioView: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .foregroundStyle(contentColor.opacity(0.72))
                     }
                 }
                 .font(.system(size: CGFloat(12)))
-                .opacity(0.72)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if let avatarSource {

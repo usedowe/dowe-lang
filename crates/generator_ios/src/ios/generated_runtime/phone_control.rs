@@ -202,7 +202,7 @@ struct DowePhone: View {
                 .buttonStyle(.plain)
                 .disabled(disabled || countries.isEmpty)
                 .foregroundStyle(contentColor)
-                Divider().frame(height: CGFloat(24))
+                Rectangle().fill(contentColor.opacity(0.22)).frame(width: CGFloat(1), height: CGFloat(24))
                 ZStack(alignment: .leading) {
                     if let label, floating && (focused || !currentText.isEmpty) {
                         Text(label).font(.caption).offset(y: CGFloat(-12))
@@ -223,6 +223,7 @@ struct DowePhone: View {
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: CGFloat(12)))
             .overlay(RoundedRectangle(cornerRadius: CGFloat(12)).stroke(validationError == nil ? contentColor.opacity(0.22) : DoweDesign.danger, lineWidth: CGFloat(1)))
+            .opacity(disabled ? 0.56 : 1)
             .background(
                 DowePhoneCountryAnchorPresenter(
                     isPresented: showCountries,

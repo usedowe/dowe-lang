@@ -90,9 +90,10 @@ fn render_swift_text_svg_alert_node(
                 .as_deref()
                 .and_then(|name| context.action_id(name))
             {
+                let close_size = dowe_components::AlertVisualContract::standard().close_button_size;
                 output.push_str(&format!(
-                    "{alert_pad}    Button(action: {{ state.run(\"{}\") }}) {{ Text(\"x\") }}\n",
-                    escape_swift(action)
+                    "{alert_pad}    Button(action: {{ state.run(\"{}\") }}) {{ Text(\"x\") }}\n{alert_pad}        .frame(width: CGFloat({close_size}), height: CGFloat({close_size}))\n",
+                    escape_swift(action),
                 ));
             }
             output.push_str(&format!("{alert_pad}}}\n"));

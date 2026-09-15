@@ -8,9 +8,9 @@
 }
 .checkbox-input {
   position:relative;
-  width:1.25rem;
-  height:1.25rem;
-  min-width:1.25rem;
+  width:var(--dowe-selection-control-size);
+  height:var(--dowe-selection-control-size);
+  min-width:var(--dowe-selection-control-size);
   appearance:none;
   border:2px solid var(--dowe-muted);
   border-radius:.25rem;
@@ -45,6 +45,9 @@
   background:var(--dowe-muted);
   outline:0;
   transition:background-color 160ms ease;
+}
+.checkbox-input:disabled,.radio:disabled,.toggle-input:disabled {
+  opacity:var(--dowe-selection-disabled-opacity);
 }
 .toggle-input::before {
   content:"";
@@ -222,8 +225,8 @@
   height:.5rem;
 }
 .radio.is-md {
-  width:1.25rem;
-  height:1.25rem;
+  width:var(--dowe-selection-control-size);
+  height:var(--dowe-selection-control-size);
 }
 .radio.is-md:checked::after {
   width:.75rem;

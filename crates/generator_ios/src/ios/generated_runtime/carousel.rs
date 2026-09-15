@@ -1,6 +1,30 @@
 fn swift_runtime_carousel() -> &'static str {
-    r##"struct DoweCarouselView<Content: View>: View {
+    r##"struct DoweCarouselGeometry {
+    let contentGap: CGFloat
+    let viewportPadding: CGFloat
+    let verticalViewportHeight: CGFloat
+    let slideFraction: CGFloat
+    let slideMaxWidth: Int?
+}
+
+struct DoweCarouselControlContract {
+    let navigationSize: CGFloat
+    let navigationInset: CGFloat
+    let controlSize: CGFloat
+    let controlGap: CGFloat
+    let indicatorGap: CGFloat
+    let indicatorHeight: CGFloat
+    let indicatorInactiveWidth: CGFloat
+    let indicatorActiveWidth: CGFloat
+    let indicatorDotSize: CGFloat
+    let indicatorDotActiveScale: CGFloat
+}
+
+struct DoweCarouselView<Content: View>: View {
     let variant: String
+    let snap: Bool
+    let geometry: DoweCarouselGeometry
+    let control: DoweCarouselControlContract
     let slideIds: [String]
     let autoplay: Bool
     let autoplayInterval: Int
@@ -23,8 +47,11 @@ fn swift_runtime_carousel() -> &'static str {
     @State private var scrollId: String?
     @State private var userInteracting = false
 
-    init(variant: String, slideIds: [String], autoplay: Bool, autoplayInterval: Int, disableLoop: Bool, hideControls: Bool, hideIndicators: Bool, showNavigation: Bool, showCounter: Bool, orientation: String, size: String, indicatorType: String, title: String?, slideWidth: Int?, slideHeight: Int?, slidesPerView: Int, gap: Int, accentColor: Color, @ViewBuilder content: () -> Content) {
+    init(variant: String, snap: Bool, control: DoweCarouselControlContract, geometry: DoweCarouselGeometry, slideIds: [String], autoplay: Bool, autoplayInterval: Int, disableLoop: Bool, hideControls: Bool, hideIndicators: Bool, showNavigation: Bool, showCounter: Bool, orientation: String, size: String, indicatorType: String, title: String?, slideWidth: Int?, slideHeight: Int?, slidesPerView: Int, gap: Int, accentColor: Color, @ViewBuilder content: () -> Content) {
         self.variant = variant
+        self.snap = snap
+        self.control = control
+        self.geometry = geometry
         self.slideIds = slideIds
         self.autoplay = autoplay
         self.autoplayInterval = autoplayInterval
@@ -46,9 +73,11 @@ fn swift_runtime_carousel() -> &'static str {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: CGFloat(12)) {
+        let previousIconName = orientation == "vertical" ? "chevron.up" : "chevron.left"
+        let nextIconName = orientation == "vertical" ? "chevron.down" : "chevron.right"
+        VStack(alignment: .leading, spacing: geometry.contentGap) {
             if let title {
-                Text(title).font(.title2).fontWeight(.bold).foregroundStyle(accentColor)
+                Text(title).font(.system(size: CGFloat(24), weight: .bold)).foregroundStyle(accentColor)
             }
             ZStack(alignment: .center) {
                 if orientation == "vertical" {
@@ -66,8 +95,9 @@ fn swift_runtime_carousel() -> &'static str {
                             }
                         }
                     }
+                    .padding(geometry.viewportPadding)
                     .scrollPosition(id: $scrollId)
-                    .frame(maxHeight: CGFloat(560))
+                    .frame(height: geometry.verticalViewportHeight)
                     .simultaneousGesture(carouselDragGesture)
                 } else {
                     Group {
@@ -84,45 +114,66 @@ fn swift_runtime_carousel() -> &'static str {
                             }
                         }
                     }
+                    .padding(geometry.viewportPadding)
                     .scrollPosition(id: $scrollId)
                     .environment(\.layoutDirection, variant == "rtl" ? .rightToLeft : .leftToRight)
                     .simultaneousGesture(carouselDragGesture)
                 }
                 if showNavigation {
-                    HStack {
-                        Button("‹") { move(-1) }
-                            .disabled(disableLoop && currentIndex == 0)
-                        Spacer()
-                        Button("›") { move(1) }
-                            .disabled(disableLoop && currentIndex == slideIds.count - 1)
-                    }
-                    .padding(.horizontal, CGFloat(8))
-                }
-            }
-            if !hideControls || variant == "controls" {
-                HStack {
-                    Button("Previous") { move(-1) }
-                        .disabled(disableLoop && currentIndex == 0)
-                    Spacer()
-                    Button("Next") { move(1) }
-                        .disabled(disableLoop && currentIndex == slideIds.count - 1)
-                }
-            }
-            if !hideIndicators || variant == "dots" || variant == "thumbnails" {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: CGFloat(8)) {
-                        ForEach(Array(slideIds.enumerated()), id: \.offset) { index, id in
-                            Button(variant == "thumbnails" ? id : indicatorType == "dot" || variant == "dots" ? "•" : "\(index + 1)") {
-                                currentIndex = index
-                                withAnimation { scrollId = id }
-                            }
-                            .foregroundStyle(index == currentIndex ? accentColor : accentColor.opacity(0.45))
+                    if orientation == "vertical" {
+                        VStack {
+                            DoweIconButton(enabled: !disableLoop || currentIndex > 0, dimension: control.navigationSize, backgroundColor: DoweDesign.surface, contentColor: accentColor, borderColor: accentColor.opacity(0.24), label: "Previous slide", action: { move(-1) }) { Image(systemName: previousIconName) }
+                            Spacer()
+                            DoweIconButton(enabled: !disableLoop || currentIndex < slideIds.count - 1, dimension: control.navigationSize, backgroundColor: DoweDesign.surface, contentColor: accentColor, borderColor: accentColor.opacity(0.24), label: "Next slide", action: { move(1) }) { Image(systemName: nextIconName) }
                         }
+                        .frame(maxHeight: .infinity)
+                        .padding(.vertical, control.navigationInset)
+                    } else {
+                        HStack {
+                            DoweIconButton(enabled: !disableLoop || currentIndex > 0, dimension: control.navigationSize, backgroundColor: DoweDesign.surface, contentColor: accentColor, borderColor: accentColor.opacity(0.24), label: "Previous slide", action: { move(-1) }) { Image(systemName: previousIconName) }
+                            Spacer()
+                            DoweIconButton(enabled: !disableLoop || currentIndex < slideIds.count - 1, dimension: control.navigationSize, backgroundColor: DoweDesign.surface, contentColor: accentColor, borderColor: accentColor.opacity(0.24), label: "Next slide", action: { move(1) }) { Image(systemName: nextIconName) }
+                        }
+                        .padding(.horizontal, control.navigationInset)
                     }
                 }
             }
-            if showCounter {
-                Text("\(currentIndex + 1) / \(slideIds.count)").foregroundStyle(accentColor)
+            if !hideControls || variant == "controls" || !hideIndicators || variant == "dots" || variant == "thumbnails" || showCounter {
+                HStack(spacing: control.controlGap) {
+                    if !hideControls || variant == "controls" {
+                        DoweIconButton(enabled: !disableLoop || currentIndex > 0, dimension: control.controlSize, backgroundColor: DoweDesign.surface, contentColor: accentColor, borderColor: accentColor.opacity(0.24), label: "Previous slide", action: { move(-1) }) { Image(systemName: previousIconName) }
+                    }
+                    if !hideIndicators || variant == "dots" || variant == "thumbnails" {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: control.indicatorGap) {
+                                ForEach(Array(slideIds.enumerated()), id: \.offset) { index, id in
+                                    if variant == "thumbnails" {
+                                        Button {
+                                            currentIndex = index
+                                            withAnimation { scrollId = id }
+                                        } label: {
+                                            Text(id)
+                                                .font(.footnote)
+                                                .foregroundStyle(index == currentIndex ? accentColor : accentColor.opacity(0.45))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .accessibilityLabel(Text(id))
+                                    } else {
+                                        DowePaginationIndicator(active: index == currentIndex, dot: indicatorType == "dot" || variant == "dots", enabled: true, size: size, color: accentColor, label: "Go to slide \(index + 1)", action: { currentIndex = index; withAnimation { scrollId = id } }, inactiveWidth: control.indicatorInactiveWidth, activeWidth: control.indicatorActiveWidth, height: control.indicatorHeight, dotSize: control.indicatorDotSize, dotActiveScale: control.indicatorDotActiveScale)
+                                    }
+                                }
+                            }
+                        }
+                        .frame(maxWidth: indicatorContentWidth)
+                    }
+                    if showCounter {
+                        Text("\(currentIndex + 1) / \(slideIds.count)").foregroundStyle(accentColor).lineLimit(1)
+                    }
+                    if !hideControls || variant == "controls" {
+                        DoweIconButton(enabled: !disableLoop || currentIndex < slideIds.count - 1, dimension: control.controlSize, backgroundColor: DoweDesign.surface, contentColor: accentColor, borderColor: accentColor.opacity(0.24), label: "Next slide", action: { move(1) }) { Image(systemName: nextIconName) }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
             }
         }
         .onAppear {
@@ -145,8 +196,16 @@ fn swift_runtime_carousel() -> &'static str {
         }
     }
 
+    private var indicatorContentWidth: CGFloat? {
+        if variant == "thumbnails" { return nil }
+        let count = CGFloat(slideIds.count)
+        let gaps = CGFloat(max(0, slideIds.count - 1)) * control.indicatorGap
+        let dot = indicatorType == "dot" || variant == "dots"
+        return dot ? count * control.indicatorDotSize + gaps : max(0, count - 1) * control.indicatorInactiveWidth + control.indicatorActiveWidth + gaps
+    }
+
     private var shouldSnap: Bool {
-        !["simple", "masonry", "rtl", "sticky"].contains(variant)
+        snap
     }
 
     private var carouselDragGesture: some Gesture {
@@ -169,6 +228,7 @@ struct DoweCarouselSlideView<Content: View>: View {
     let id: String
     let variant: String
     let index: Int
+    let geometry: DoweCarouselGeometry
     let orientation: String
     let slideWidth: Int?
     let slideHeight: Int?
@@ -176,10 +236,11 @@ struct DoweCarouselSlideView<Content: View>: View {
     let gap: Int
     @ViewBuilder var content: Content
 
-    init(id: String, variant: String, index: Int, orientation: String, slideWidth: Int?, slideHeight: Int?, slidesPerView: Int, gap: Int, @ViewBuilder content: () -> Content) {
+    init(id: String, variant: String, index: Int, geometry: DoweCarouselGeometry, orientation: String, slideWidth: Int?, slideHeight: Int?, slidesPerView: Int, gap: Int, @ViewBuilder content: () -> Content) {
         self.id = id
         self.variant = variant
         self.index = index
+        self.geometry = geometry
         self.orientation = orientation
         self.slideWidth = slideWidth
         self.slideHeight = slideHeight
@@ -212,29 +273,9 @@ struct DoweCarouselSlideView<Content: View>: View {
             content
                 .frame(width: CGFloat(slideWidth))
                 .frame(height: slideHeight.map { CGFloat($0) })
-        } else if variant == "masonry" {
+        } else if let maximum = geometry.slideMaxWidth {
             content
-                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.72, CGFloat(200)) }
-                .frame(height: slideHeight.map { CGFloat($0) })
-        } else if variant == "sticky" {
-            content
-                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.88, CGFloat(672)) }
-                .frame(height: slideHeight.map { CGFloat($0) })
-        } else if variant == "stories" {
-            content
-                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.82, CGFloat(384)) }
-                .frame(height: slideHeight.map { CGFloat($0) })
-        } else if variant == "smartStack" {
-            content
-                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.8, CGFloat(352)) }
-                .frame(height: slideHeight.map { CGFloat($0) })
-        } else if variant == "cardStack" {
-            content
-                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.84, CGFloat(448)) }
-                .frame(height: slideHeight.map { CGFloat($0) })
-        } else if variant == "flipbook" {
-            content
-                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.88, CGFloat(480)) }
+                .containerRelativeFrame(.horizontal) { length, _ in min(length * geometry.slideFraction, CGFloat(maximum)) }
                 .frame(height: slideHeight.map { CGFloat($0) })
         } else {
             content

@@ -63,8 +63,8 @@
   justify-content:space-between;
   position:relative;
   width:100%;
-  min-height:3rem;
-  padding:0 0.5rem;
+  min-height:var(--dowe-navigation-item-height);
+  padding:0 var(--dowe-navigation-item-padding);
 }
 .footer-content {
   flex-wrap:wrap;
@@ -85,14 +85,14 @@
   min-width:0;
 }
 .appbar-start,.appbar-end {
-  gap:0.75rem;
-  padding:0.75rem;
+  gap:var(--dowe-navigation-item-gap);
+  padding:var(--dowe-navigation-item-padding);
 }
 .appbar-center {
   flex:1 1 0;
   justify-content:center;
-  gap:0.75rem;
-  padding:0.75rem;
+  gap:var(--dowe-navigation-item-gap);
+  padding:var(--dowe-navigation-item-padding);
 }
 .footer-start,.footer-end,.bottombar-start,.bottombar-end {
   gap:0.5rem;

@@ -1,8 +1,10 @@
 fn compose_nav_menu_metrics(size: SideNavSize) -> (u16, u16, u16, u16, u16) {
     match size {
-        SideNavSize::Sm => (8, 6, 8, 12, 10),
-        SideNavSize::Md => (12, 8, 10, 14, 12),
-        SideNavSize::Lg => (12, 8, 12, 16, 14),
+        // Keep these values aligned with navigation_menus.css:
+        // horizontal padding, vertical padding, gap, label size, description size.
+        SideNavSize::Sm => (12, 6, 6, 12, 10),
+        SideNavSize::Md => (16, 8, 8, 14, 12),
+        SideNavSize::Lg => (16, 8, 12, 18, 14),
     }
 }
 

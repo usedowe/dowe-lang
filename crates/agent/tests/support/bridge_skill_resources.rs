@@ -152,6 +152,32 @@ fn searches_reference_ui_examples() {
 }
 
 #[test]
+fn searches_initial_marketing_block_examples_by_structure() {
+    for (query, expected) in [
+        ("hero focal media", "marketing-editorial-hero"),
+        ("compact proof metrics", "marketing-proof-metrics"),
+        ("split media ecosystem", "marketing-split-media"),
+        ("dark opportunity genesis", "marketing-opportunity-band"),
+        ("growth adoption chart", "marketing-growth-ladder"),
+        ("media CTA white paper", "marketing-media-cta"),
+        ("faq accordion", "marketing-faq-editorial"),
+        ("contact channels", "marketing-contact-panel"),
+    ] {
+        let result = search_public_examples(query, 5).expect("marketing example search");
+        assert_eq!(
+            result.results.first().map(|item| item.id.as_str()),
+            Some(expected)
+        );
+        let paths = result
+            .results
+            .iter()
+            .map(|item| item.source_path.as_str())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(paths.len(), result.results.len());
+    }
+}
+
+#[test]
 fn ranks_project_codegraph_nodes_from_the_request() {
     let temp = TempDir::new().expect("tempdir");
     fs::create_dir_all(temp.path().join("views/pages")).expect("views");
@@ -220,4 +246,3 @@ fn builds_compact_project_context_without_private_skill_content() {
     assert!(!encoded.contains("\"Home\""));
     assert!(!temp.path().join(".dowe").exists());
 }
-

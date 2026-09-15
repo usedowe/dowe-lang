@@ -152,3 +152,7 @@ fn generates_real_android_notification_support() {
 }
 
 include!("tests/scheme_content_inheritance.rs");
+
+include!("tests/carousel_geometry.rs");
+
+include!("tests/reactive_style_isolation.rs");

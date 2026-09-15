@@ -180,7 +180,9 @@ struct DoweSideNav: View {
     private func entryView(_ item: DoweSideNavEntry) -> some View {
         switch item.kind {
         case "divider":
-            Divider()
+            Rectangle()
+                .fill(DoweDesign.muted)
+                .frame(height: CGFloat(1))
                 .padding(.vertical, CGFloat(8))
         case "submenu":
             DoweSideNavSubmenu(stateKey: stateKey + ":" + item.id, open: item.open, bordered: item.bordered, wide: wide) {

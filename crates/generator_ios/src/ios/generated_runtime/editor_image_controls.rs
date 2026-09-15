@@ -230,6 +230,7 @@ struct DoweImageCropper: View {
             if let text = cropError ?? errorText ?? helpText { Text(text).font(.system(size: CGFloat(13))).foregroundStyle(cropError != nil || errorText != nil ? DoweDesign.danger : contentColor.opacity(0.7)) }
         }
         .foregroundStyle(contentColor)
+        .opacity(disabled ? 0.5 : 1)
         .task(id: currentValue) { appliedImage = await doweLoadCropperImage(currentValue) }
         .fileImporter(isPresented: $pickerPresented, allowedContentTypes: doweImageCropperTypes(accept), allowsMultipleSelection: false) { result in
             guard case .success(let urls) = result, let url = urls.first else { return }

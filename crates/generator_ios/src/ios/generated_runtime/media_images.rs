@@ -38,7 +38,9 @@ r#"struct DoweImageView: View {
 private func doweImageContent(source: String, alt: String, objectFit: String, contentColor: Color) -> some View {
                 if let url = doweImageURL(source) {
                     AsyncImage(url: url) { image in
-                        if objectFit == "contain" {
+                        if objectFit == "none" {
+                            image
+                        } else if objectFit == "contain" {
                             image.resizable().scaledToFit()
                         } else {
                             image.resizable().scaledToFill()
@@ -47,9 +49,13 @@ private func doweImageContent(source: String, alt: String, objectFit: String, co
                         Rectangle().fill(contentColor.opacity(0.12))
                     }
                 } else {
-                    Image(source)
-                        .resizable()
-                        .aspectRatio(contentMode: objectFit == "contain" ? .fit : .fill)
+                    if objectFit == "none" {
+                        Image(source)
+                    } else {
+                        Image(source)
+                            .resizable()
+                            .aspectRatio(contentMode: objectFit == "contain" ? .fit : .fill)
+                    }
                 }
 }
 

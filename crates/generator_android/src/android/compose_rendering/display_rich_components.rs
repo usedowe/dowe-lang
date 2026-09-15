@@ -119,13 +119,37 @@ fn render_compose_pagination(
         .unwrap_or_else(|| items.len().max(1).to_string());
     let previous = solar_control_icon("arrow-left").expect("bundled Pagination previous icon");
     let next = solar_control_icon("arrow-right").expect("bundled Pagination next icon");
+    let pagination_contract = props
+        .pagination
+        .as_ref()
+        .map(|pagination| pagination.control_contract(props.size))
+        .unwrap_or_else(|| PaginationControlContract::for_size(props.size));
+    let control_literal = format!(
+        "DowePaginationControlContract(controlSize = {}, indicatorGap = {}, indicatorHeight = {}, indicatorInactiveWidth = {}, indicatorActiveWidth = {}, indicatorDotSize = {}, indicatorDotActiveScalePercent = {})",
+        pagination_contract.control_size,
+        pagination_contract.indicator_gap,
+        pagination_contract.indicator_height,
+        pagination_contract.indicator_inactive_width,
+        pagination_contract.indicator_active_width,
+        pagination_contract.indicator_dot_size,
+        pagination_contract.indicator_dot_active_scale_percent,
+    );
     output.push_str(&format!(
-        "{pad}DowePagination(value = {value}, onValueChange = {change}, pageCount = {page_count}, size = {}, disabled = {}, ariaLabel = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, onChange = {}, previousIcon = ",
+        "{pad}DowePagination(value = {value}, onValueChange = {change}, pageCount = {page_count}, size = {}, control = {}, paginationVariant = {}, disabled = {}, ariaLabel = {}, backgroundColor = {}, contentColor = {}, accentColor = {}, borderColor = {}, onChange = {}, previousIcon = ",
         compose_string_literal(props.size.as_str()),
+        control_literal,
+        compose_string_literal(
+            props
+                .pagination
+                .as_ref()
+                .map(|pagination| pagination.variant.as_str())
+                .unwrap_or("pages"),
+        ),
         props.disabled,
         compose_optional_string(props.aria_label.as_deref()),
         card_variant_container(&props.style),
         card_variant_content(&props.style),
+        compose_scheme_color(&props.style),
         compose_variant_border(&props.style),
         compose_optional_component_action(props.on_change.as_deref(), None, context),
     ));
@@ -177,4 +201,3 @@ fn render_compose_collapsible(
     }
     output.push_str(&format!("{pad}}}\n"));
 }
-

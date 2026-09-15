@@ -148,9 +148,10 @@ fn render_compose_display_alert(
                 .as_deref()
                 .and_then(|name| context.action_id(name))
             {
+                let close_size = dowe_components::AlertVisualContract::standard().close_button_size;
                 output.push_str(&format!(
-                            "{alert_pad}    Button(onClick = {{ actionScope.launch {{ state.run(\"{}\") }} }}, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {{ Text(\"x\") }}\n",
-                            escape_kotlin(action)
+                            "{alert_pad}    Button(onClick = {{ actionScope.launch {{ state.run(\"{}\") }} }}, modifier = Modifier.size({close_size}.dp), contentPadding = PaddingValues(0.dp), shape = CircleShape) {{ Text(\"x\") }}\n",
+                            escape_kotlin(action),
                         ));
             }
             output.push_str(&format!("{alert_pad}}}\n"));
@@ -325,4 +326,3 @@ fn render_compose_chart(
         card_variant_content(&props.style),
     ));
 }
-

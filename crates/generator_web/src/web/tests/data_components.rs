@@ -15,6 +15,10 @@ fn renders_code_markup_theme_classes_and_copy_runtime() {
         &tree,
     );
     assert!(chunk.css_content.contains(".code-block.is-solid.is-surface"));
+    let content_css = include_str!("../routes_and_css_collection/design_css/content.css");
+    assert!(content_css.contains(
+        "border-bottom:1px solid color-mix(in srgb,currentColor 27%,transparent)"
+    ));
     assert!(
         super::router_js(&super::WebOutput {
             chunks: Vec::new(),
@@ -141,6 +145,7 @@ fn renders_chart_markup_css_and_runtime() {
     assert!(runtime.contains("chart.dataset.doweChartHideLabels"));
     assert!(runtime.contains("Math.abs(sweep)>=359.999"));
     assert!(runtime.contains("chart.dataset.doweChartShowInlineLabels"));
+    assert!(runtime.contains("series.slice(0,6)"));
 }
 
 #[test]
@@ -166,6 +171,9 @@ fn renders_table_markup_css_and_runtime() {
         ".table.is-outlined.is-primary{background-color:transparent;color:var(--dowe-primary);border:1px solid var(--dowe-primary);}"
     ));
     assert!(chunk.css_content.contains(".table-container"));
+    let design_css = super::design_css();
+    assert!(design_css.contains("min-width:max-content"));
+    assert!(design_css.contains("min-width:calc(160px + (2 * var(--dowe-table-cell-padding)))"));
     let router = super::router_js(&super::WebOutput {
         chunks: Vec::new(),
         pages: Vec::new(),
@@ -176,6 +184,8 @@ fn renders_table_markup_css_and_runtime() {
     });
     assert!(router.contains("renderTable"));
     assert!(router.contains("tableCellValue"));
+    assert!(router.contains("head.style.width"));
+    assert!(router.contains("minWidth"));
 }
 
 #[test]
@@ -229,4 +239,3 @@ fn renders_divider_markup_orientation_and_scheme_css() {
         ".divider.is-primary{background-color:var(--dowe-primary);color:var(--dowe-primary);}"
     ));
 }
-

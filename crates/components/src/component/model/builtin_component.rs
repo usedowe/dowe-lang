@@ -134,6 +134,7 @@ impl BuiltinComponent {
         Self::Brand,
         Self::Banner,
         Self::IconButton,
+        Self::Swap,
         Self::ToggleTheme,
         Self::SelectTheme,
         Self::Fab,

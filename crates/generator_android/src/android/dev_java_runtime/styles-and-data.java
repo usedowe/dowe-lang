@@ -447,7 +447,9 @@
             return;
         }
         if (view instanceof TextView) {
-            ((TextView) view).setTextColor(doweButtonContent(variant, scheme));
+            if (variantPath instanceof String || schemePath instanceof String) {
+                ((TextView) view).setTextColor(doweButtonContent(variant, scheme));
+            }
             if (sizePath instanceof String) {
                 String size = doweReactiveEnum(sizePath, "size", "md");
                 ((TextView) view).setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize("xs".equals(size) ? 12f : "sm".equals(size) ? 14f : "lg".equals(size) ? 18f : "xl".equals(size) ? 20f : 16f));

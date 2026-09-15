@@ -215,6 +215,8 @@ fn generates_swiftui_media_display_form_components() {
         .expect("image aspect helper");
     assert!(image_runtime.contains("DoweImageAspectLayout(ratio: doweImageAspect(aspect))"));
     assert!(image_runtime.contains("struct DoweImageAspectLayout: Layout"));
+    assert!(image_runtime.contains("if objectFit == \"none\""));
+    assert!(image_runtime.contains("Image(source)\n                    } else {"));
     assert!(
         image_runtime
             .contains("return CGSize(width: resolvedWidth, height: resolvedWidth / resolvedRatio)")
@@ -253,6 +255,7 @@ fn generates_swiftui_media_display_form_components() {
     assert!(!views.contains("Button(playing ? \"Pause\" : \"Play\")"));
     assert!(!views.contains("Text(open ? \"^\" : \"v\")"));
     assert!(views.contains("DoweCarouselView(variant: \"snapping\""));
+    assert!(views.contains("snap: true"));
     assert!(views.contains("ScrollView(.horizontal"));
     assert!(views.contains("showsIndicators: false"));
     assert!(views.contains("if showNavigation"));
@@ -262,15 +265,24 @@ fn generates_swiftui_media_display_form_components() {
     assert!(views.contains("if shouldSnap"));
     assert!(views.contains("private var shouldSnap: Bool"));
     assert!(views.contains(".scrollTransition(.interactive, axis: orientation == \"vertical\" ? .vertical : .horizontal)"));
-    assert!(views.contains(".disabled(disableLoop && currentIndex == 0)"));
+    assert!(views.contains("DoweIconButton(enabled: !disableLoop || currentIndex > 0, dimension: control.navigationSize"));
     assert!(views.contains("containerRelativeFrame(.horizontal"));
     assert!(views.contains("carouselHorizontalOffset"));
     assert!(views.contains(".scrollPosition(id: $scrollId)"));
+    assert!(views.contains("DowePaginationIndicator(active: index == currentIndex"));
+    assert!(views.contains(".buttonStyle(.plain)"));
+    assert!(views.contains("DoweCarouselControlContract(navigationSize: CGFloat(40)"));
+    assert!(views.contains("control.indicatorActiveWidth"));
+    assert!(views.contains("DoweCarouselGeometry(contentGap: CGFloat(12), viewportPadding: CGFloat(0), verticalViewportHeight: CGFloat(448)"));
+    assert!(views.contains(".frame(height: geometry.verticalViewportHeight)"));
+    assert!(views.contains(".frame(maxWidth: indicatorContentWidth)"));
+    assert!(!views.contains(".frame(maxWidth: 240)"));
+    assert!(views.contains(".scaleEffect(dot && active ? resolvedDotActiveScale : 1)"));
     assert!(views.contains(".onChange(of: scrollId) { _, value in"));
     assert!(!views.contains(".onChange(of: scrollId) { value in"));
     assert!(views.contains(".task(id: \"\\(autoplay)-\\(autoplayInterval)-\\(disableLoop)\")"));
     assert!(views.contains("if !userInteracting && !(disableLoop && currentIndex >= slideIds.count - 1) { move(1) }"));
-    assert!(views.contains("containerRelativeFrame(.horizontal) { length, _ in min(length * 0.82, CGFloat(384)) }"));
+    assert!(views.contains("containerRelativeFrame(.horizontal) { length, _ in min(length * geometry.slideFraction, CGFloat(maximum)) }"));
     assert!(views.contains("if variant == \"slideshow\" { return 1 - distance * 0.12 }"));
     assert!(views.contains("rotation3DEffect"));
     assert!(views.contains("nonisolated private func carouselRotation(_ phase: Double) -> Double"));
@@ -294,7 +306,6 @@ fn generates_swiftui_media_display_form_components() {
         "smartStack",
         "cardStack",
         "flipbook",
-        "masonry",
         "rtl",
         "controls",
         "dots",
@@ -319,6 +330,8 @@ fn generates_swiftui_media_display_form_components() {
     assert!(views.contains("orientation: \"horizontal\""));
     assert!(views.contains("DoweToggleView(checked:"));
     assert!(views.contains("struct DoweSliderView: View"));
+    assert!(views.contains("DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(286), maxWidth: CGFloat(340), maxHeight: CGFloat(420)"));
+    assert!(views.contains("DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(600), maxWidth: CGFloat(720), maxHeight: CGFloat(460)"));
     assert!(views.contains("Image(systemName: \"checkmark\")"));
     assert!(views.contains("private struct DoweColorPickerPanel: View"));
     assert!(views.contains("doweColorFromHsv(hue, saturation, brightness)"));

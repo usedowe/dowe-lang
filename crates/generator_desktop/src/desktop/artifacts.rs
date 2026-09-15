@@ -1,6 +1,9 @@
 use dowe_components::ViewRoute;
 use std::path::PathBuf;
 
+const DESKTOP_WINDOW_WIDTH: u16 = 1024;
+const DESKTOP_WINDOW_HEIGHT: u16 = 768;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DesktopOutput {
     pub files: Vec<DesktopArtifact>,
@@ -165,11 +168,11 @@ __DOWE_DEVTOOLS_PROPERTIES__
         contentController.add(self, name: "doweNotifications")
         let configuration = WKWebViewConfiguration()
         configuration.userContentController = contentController
-        let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1024, height: 768), configuration: configuration)
+        let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: __DOWE_WINDOW_WIDTH__, height: __DOWE_WINDOW_HEIGHT__), configuration: configuration)
         webView.autoresizingMask = [.width, .height]
 __DOWE_INSPECTABILITY____DOWE_DEVTOOLS_SETUP__        webView.navigationDelegate = self
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1024, height: 768),
+            contentRect: NSRect(x: 0, y: 0, width: __DOWE_WINDOW_WIDTH__, height: __DOWE_WINDOW_HEIGHT__),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -416,6 +419,8 @@ app.setActivationPolicy(.regular)
 app.run()
 "##
     .replace("__DOWE_APP_NAME__", &escape_swift(app_name))
+    .replace("__DOWE_WINDOW_WIDTH__", &DESKTOP_WINDOW_WIDTH.to_string())
+    .replace("__DOWE_WINDOW_HEIGHT__", &DESKTOP_WINDOW_HEIGHT.to_string())
     .replace("__DOWE_INSPECTABILITY__", inspectability)
     .replace("__DOWE_DEVTOOLS_PROPERTIES__", devtools_properties)
     .replace("__DOWE_DEVTOOLS_SETUP__", devtools_setup)
@@ -439,10 +444,12 @@ fn desktop_target_manifest(
         .map(|route| route.route_path.as_str())
         .unwrap_or("/");
     format!(
-        r#"{{"target":"{target}","entrypoint":"{entrypoint}","app":{{"name":"{}","bundle":"{}"}},"routerMode":"spa","webRuntime":"shared","reactiveProps":true,"webManifest":"../web/manifest.json","webIndex":"../web/index.html","window":{{"title":"{}","width":1024,"height":768}},"deepLinks":{{"scheme":"dowe-dev","host":"generated","initialPath":"{initial}","routes":[{route_values}]}},"externalPolicies":["system","webview"]}}"#,
+        r#"{{"target":"{target}","entrypoint":"{entrypoint}","app":{{"name":"{}","bundle":"{}"}},"routerMode":"spa","webRuntime":"shared","reactiveProps":true,"webManifest":"../web/manifest.json","webIndex":"../web/index.html","window":{{"title":"{}","width":{},"height":{}}},"deepLinks":{{"scheme":"dowe-dev","host":"generated","initialPath":"{initial}","routes":[{route_values}]}},"externalPolicies":["system","webview"]}}"#,
         escape_json(app_name),
         escape_json(app_bundle),
-        escape_json(app_name)
+        escape_json(app_name),
+        DESKTOP_WINDOW_WIDTH,
+        DESKTOP_WINDOW_HEIGHT
     )
 }
 

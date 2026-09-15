@@ -360,9 +360,10 @@ layout AuthLayout
 Use one responsive page tree. Let the form Grid own width, maximum width, and field rhythm; let each
 control and Button own its surface and size. Add a Card only when the reference visibly groups the
 form on a raised, filled, or outlined panel. A visually flat form remains Grid/Flex content.
-A page Section never receives a padding override, including `p:0` or responsive `p*` values.
-For full-viewport or rail decisions, keep the Section default and place required spacing on the
-inner Flex/Grid that owns the form or media region.
+A dashboard or operational Section never receives a padding override, including `p:0` or
+responsive `p*` values. For full-viewport or rail decisions in those screens, keep Section padding
+omitted and place required spacing on the inner Flex/Grid that owns the form or media region. On a
+landing page, Section padding overrides are valid when they intentionally shape the band rhythm.
 
 ```text
 Section minH:"vh-0"
@@ -584,12 +585,13 @@ Section minH:"vh-0"
 
 Use component-owned defaults first. When the default-first render proves an exception, use one
 `gap`, responsive direction, or `w`/`maxW` on the real owner for the missing rhythm or measure. The
-default Section body already provides responsive horizontal and vertical insets, so omit all
-Section `p*` props for every band. This prohibition includes `p:0`, responsive objects, and
-full-viewport forms. Put required spacing on the inner Grid/Flex/Card owner instead of repeating it
-through Section, Grid, and Card. Never use unsupported margin props or insert size-only
-Box spacers, empty Grid cells, or breakpoint-specific wrapper trees to reproduce offsets from one
-screenshot.
+default Section body already provides responsive insets. For dashboard and operational bands,
+omit all Section `p*` props, including `p:0`, responsive objects, and full-viewport forms; put
+required spacing on the inner Grid/Flex/Card owner instead of repeating it through Section, Grid,
+and Card. For landing-page bands, a deliberate Section `p*` override is valid when it establishes
+the band's spacious or compact reading rhythm. Never use unsupported margin props or insert
+size-only Box spacers, empty Grid cells, or breakpoint-specific wrapper trees to reproduce offsets
+from one screenshot.
 
 ```text
 Section boxed:true cover:"/assets/images/hero-cover.webp"

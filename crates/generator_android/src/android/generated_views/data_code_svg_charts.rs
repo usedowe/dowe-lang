@@ -95,7 +95,7 @@ private fun DoweChartLegend(categories: List<DoweChartCategory>, palette: String
     }
     if (legendPosition == "left" || legendPosition == "right") {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            categories.take(8).forEachIndexed { index, item ->
+            categories.take(6).forEachIndexed { index, item ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(Modifier.width(10.dp).height(10.dp).background(doweChartColor(palette, index, item.color)))
                     if (!hideLabels) Text(text = item.label, color = contentColor.copy(alpha = 0.82f), fontSize = 12.sp, maxLines = 1)
@@ -104,7 +104,7 @@ private fun DoweChartLegend(categories: List<DoweChartCategory>, palette: String
         }
     } else {
         FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-            categories.take(8).forEachIndexed { index, item ->
+            categories.take(6).forEachIndexed { index, item ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(Modifier.width(10.dp).height(10.dp).background(doweChartColor(palette, index, item.color)))
                     if (!hideLabels) Text(text = item.label, color = contentColor.copy(alpha = 0.82f), fontSize = 12.sp, maxLines = 1)

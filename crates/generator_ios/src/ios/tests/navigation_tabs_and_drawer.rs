@@ -16,6 +16,8 @@ fn generates_swiftui_tabs() {
     assert!(views.contains("ViewThatFits(in: .horizontal)"));
     assert!(views.contains("ScrollView(.horizontal, showsIndicators: false)"));
     assert!(views.contains("Rectangle().fill(accentColor)"));
+    assert!(views.contains(".padding(.horizontal, variant == \"stepper\" ? CGFloat(0) : CGFloat(12))"));
+    assert!(views.contains(".padding(.vertical, CGFloat(8))"));
     assert!(
         !views.contains("RoundedRectangle(cornerRadius: tabRadius).stroke(active && selectedLine")
     );

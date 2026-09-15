@@ -19,6 +19,7 @@ fn generated_views(
         swift_runtime_avatar_chat(),
         swift_runtime_empty_motion_text(),
         swift_runtime_rich_controls_map(),
+        swift_runtime_map(),
         swift_runtime_badge_chip_skeleton(),
         swift_runtime_anchored_popover(),
         swift_runtime_overlays(),

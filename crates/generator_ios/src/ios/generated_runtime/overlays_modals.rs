@@ -39,16 +39,21 @@ struct DoweAlertDialog: View {
     let confirmBackgroundColor: Color
     let confirmContentColor: Color
     let radius: CGFloat
+    let panelPadding: CGFloat
+    let contentGap: CGFloat
+    let titleSize: CGFloat
+    let descriptionSize: CGFloat
+    let buttonGap: CGFloat
     let loading: Bool
     let confirm: (() -> Void)?
 
     var body: some View {
         DoweModal(open: open, close: close, backgroundColor: backgroundColor, contentColor: contentColor, borderColor: borderColor, radius: radius, disableOverlayClose: true, hideCloseButton: true, hasHeader: true, hasFooter: true) {
-            Text(title).font(.headline)
+            Text(title).font(.system(size: titleSize, weight: .semibold))
         } content: {
-            Text(description).opacity(0.72)
+            Text(description).font(.system(size: descriptionSize)).opacity(0.72)
         } footer: {
-            HStack(spacing: CGFloat(12)) {
+            HStack(spacing: buttonGap) {
                 Spacer()
                 Button(cancelText) {
                     close()
@@ -61,6 +66,7 @@ struct DoweAlertDialog: View {
                 .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
                 .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(DoweDesign.muted, lineWidth: CGFloat(1)))
                 .disabled(loading)
+                .opacity(loading ? 0.5 : 1)
                 .buttonStyle(.plain)
                 Button(confirmText) {
                     confirm?()
@@ -72,6 +78,7 @@ struct DoweAlertDialog: View {
                 .foregroundStyle(confirmContentColor)
                 .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
                 .disabled(loading)
+                .opacity(loading ? 0.5 : 1)
                 .buttonStyle(.plain)
             }
         }

@@ -130,10 +130,6 @@
   .video-controls {
     padding:.5rem
   }
-  .video-action {
-    width:1.875rem;
-    height:1.875rem
-  }
   .video-time {
     font-size:.6875rem
   }
@@ -231,8 +227,8 @@
 }
 .media-icon {
   display:inline-flex;
-  width:1.5rem;
-  height:1.5rem;
+  width:1.25rem;
+  height:1.25rem;
   align-items:center;
   justify-content:center;
 }

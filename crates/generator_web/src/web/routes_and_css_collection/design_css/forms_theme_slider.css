@@ -139,12 +139,12 @@
 .slider::-webkit-slider-runnable-track {
   height:var(--dowe-slider-track);
   border-radius:9999px;
-  background:linear-gradient(to right,var(--dowe-slider-color) 0%,var(--dowe-slider-color) var(--dowe-slider-progress),color-mix(in srgb,var(--dowe-muted) 42%,transparent) var(--dowe-slider-progress),color-mix(in srgb,var(--dowe-muted) 42%,transparent) 100%);
+  background:linear-gradient(to right,var(--dowe-slider-color) 0%,var(--dowe-slider-color) var(--dowe-slider-progress),color-mix(in srgb,var(--dowe-slider-color) 18%,transparent) var(--dowe-slider-progress),color-mix(in srgb,var(--dowe-slider-color) 18%,transparent) 100%);
 }
 .slider::-moz-range-track {
   height:var(--dowe-slider-track);
   border-radius:9999px;
-  background:color-mix(in srgb,var(--dowe-muted) 42%,transparent);
+  background:color-mix(in srgb,var(--dowe-slider-color) 18%,transparent);
 }
 .slider::-moz-range-progress {
   height:var(--dowe-slider-track);

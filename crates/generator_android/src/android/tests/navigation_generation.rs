@@ -442,6 +442,7 @@ fn generates_android_charts_with_canvas_runtime() {
     assert!(views.content.contains("donutWidth: Int = 60"));
     assert!(views.content.contains("aspectRatio(1f)"));
     assert!(views.content.contains("DoweChartLegend"));
+    assert!(views.content.contains("categories.take(6).forEachIndexed"));
     assert!(views.content.contains("doweDrawArcChart(categories, palette, contentColor, backgroundColor, thickness, gap, startAngle, endAngle.toFloat()"));
     assert!(
         views

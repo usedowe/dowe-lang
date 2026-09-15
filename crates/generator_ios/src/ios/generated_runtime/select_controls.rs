@@ -201,15 +201,16 @@ struct DoweSelectPopover: View {
                         Text(option.label)
                             .fontWeight(.semibold)
                         if let description = option.description {
-                            Text(description).font(.caption)
-                                .foregroundStyle(DoweDesign.surfaceText.opacity(0.68))
+                                Text(description).font(.caption)
+                                .foregroundStyle(DoweDesign.surfaceText.opacity(0.5))
                         }
                     }
                     .font(font)
                     .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
                     .foregroundStyle(DoweDesign.surfaceText)
-                    .padding(.horizontal, CGFloat(16))
+                    .padding(.horizontal, CGFloat(12))
                     .padding(.vertical, CGFloat(10))
+                    .frame(minHeight: CGFloat(40), alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(option.value == selectedValue ? accentColor.opacity(0.08) : Color.clear)
                 }

@@ -3,7 +3,7 @@ fn android_runtime_rich_controls_map() -> &'static str {
 
 @Composable
 private fun DoweToggleGroup(value: String, onValueChange: (String) -> Unit, items: List<DoweToggleGroupItem>, size: String, wide: Boolean, vertical: Boolean, disabled: Boolean, ariaLabel: String?, backgroundColor: Color, contentColor: Color, borderColor: Color?, onChange: (() -> Unit)?, modifier: Modifier) {
-    val container = modifier.then(if (wide) Modifier.fillMaxWidth() else Modifier).clip(RoundedCornerShape(10.dp)).background(backgroundColor).then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(10.dp)) else Modifier).padding(4.dp)
+    val container = modifier.then(if (wide) Modifier.fillMaxWidth() else Modifier).clip(RoundedCornerShape(10.dp)).background(backgroundColor).then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(10.dp)) else Modifier).alpha(if (disabled) 0.5f else 1f).padding(4.dp)
     val buttonContent: @Composable RowScope.(DoweToggleGroupItem) -> Unit = { item ->
         Text(text = item.label, fontSize = when (size) { "xs" -> 12.sp; "sm" -> 13.sp; "lg" -> 18.sp; else -> 14.sp }, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
@@ -22,10 +22,20 @@ private fun DoweToggleGroup(value: String, onValueChange: (String) -> Unit, item
     }
 }
 
+private data class DowePaginationControlContract(
+    val controlSize: Int,
+    val indicatorGap: Int,
+    val indicatorHeight: Int,
+    val indicatorInactiveWidth: Int,
+    val indicatorActiveWidth: Int,
+    val indicatorDotSize: Int,
+    val indicatorDotActiveScalePercent: Int,
+)
+
 @Composable
-private fun DowePagination(value: String, onValueChange: (String) -> Unit, pageCount: Int, size: String, disabled: Boolean, ariaLabel: String?, backgroundColor: Color, contentColor: Color, borderColor: Color?, onChange: (() -> Unit)?, previousIcon: @Composable () -> Unit, nextIcon: @Composable () -> Unit, modifier: Modifier) {
+private fun DowePagination(value: String, onValueChange: (String) -> Unit, pageCount: Int, size: String, control: DowePaginationControlContract, paginationVariant: String, disabled: Boolean, ariaLabel: String?, backgroundColor: Color, contentColor: Color, accentColor: Color, borderColor: Color?, onChange: (() -> Unit)?, previousIcon: @Composable () -> Unit, nextIcon: @Composable () -> Unit, modifier: Modifier) {
     val current = value.toIntOrNull()?.coerceIn(1, pageCount) ?: 1
-    val dimension = when (size) { "xs" -> 24.dp; "sm" -> 32.dp; "lg" -> 48.dp; else -> 40.dp }
+    val dimension = control.controlSize.dp
     val fontSize = when (size) { "xs" -> 12.sp; "sm" -> 13.sp; "lg" -> 17.sp; else -> 14.sp }
     val pages = buildList {
         if (pageCount <= 7) {
@@ -38,19 +48,45 @@ private fun DowePagination(value: String, onValueChange: (String) -> Unit, pageC
             add(pageCount)
         }
     }
-    Row(modifier = modifier.semantics { contentDescription = ariaLabel ?: "Pagination" }, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        DowePaginationButton(enabled = !disabled && current > 1, selected = true, dimension = dimension, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, label = "Previous page", onClick = { onValueChange((current - 1).toString()); onChange?.invoke() }) { previousIcon() }
-        pages.forEach { page ->
-            if (page == 0) {
-                Box(modifier = Modifier.size(dimension), contentAlignment = Alignment.Center) { Text("…", color = DoweDesign.backgroundText.copy(alpha = 0.6f), fontSize = fontSize) }
-            } else {
-                DowePaginationButton(enabled = !disabled, selected = page == current, dimension = dimension, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, label = "Page $page", onClick = { if (page != current) { onValueChange(page.toString()); onChange?.invoke() } }) {
-                    Text(page.toString(), fontSize = fontSize, fontWeight = FontWeight.Medium)
+    Row(modifier = modifier.semantics { contentDescription = ariaLabel ?: "Pagination" }, horizontalArrangement = Arrangement.spacedBy(control.indicatorGap.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (paginationVariant == "pages" || paginationVariant == "controls") {
+            DoweIconButton(enabled = !disabled && current > 1, dimension = dimension, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, label = "Previous page", onClick = { onValueChange((current - 1).toString()); onChange?.invoke() }) { previousIcon() }
+        }
+        if (paginationVariant == "pages") {
+            pages.forEach { page ->
+                if (page == 0) {
+                    Box(modifier = Modifier.size(dimension), contentAlignment = Alignment.Center) { Text("…", color = DoweDesign.backgroundText.copy(alpha = 0.6f), fontSize = fontSize) }
+                } else {
+                    DowePaginationButton(enabled = !disabled, selected = page == current, dimension = dimension, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, label = "Page $page", onClick = { if (page != current) { onValueChange(page.toString()); onChange?.invoke() } }) {
+                        Text(page.toString(), fontSize = fontSize, fontWeight = FontWeight.Medium)
+                    }
                 }
             }
+        } else {
+            (1..pageCount).forEach { page ->
+                DowePaginationIndicator(active = page == current, dot = paginationVariant == "dots", enabled = !disabled, inactiveWidth = control.indicatorInactiveWidth.dp, activeWidth = control.indicatorActiveWidth.dp, height = control.indicatorHeight.dp, dotSize = control.indicatorDotSize.dp, dotActiveScalePercent = control.indicatorDotActiveScalePercent, color = accentColor, label = "Go to page $page", onClick = { if (page != current) { onValueChange(page.toString()); onChange?.invoke() } })
+            }
+            if (paginationVariant == "controls") {
+                Text("$current / $pageCount", color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
-        DowePaginationButton(enabled = !disabled && current < pageCount, selected = true, dimension = dimension, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, label = "Next page", onClick = { onValueChange((current + 1).toString()); onChange?.invoke() }) { nextIcon() }
+        if (paginationVariant == "pages" || paginationVariant == "controls") {
+            DoweIconButton(enabled = !disabled && current < pageCount, dimension = dimension, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, label = "Next page", onClick = { onValueChange((current + 1).toString()); onChange?.invoke() }) { nextIcon() }
+        }
     }
+}
+
+@Composable
+private fun DoweIconButton(enabled: Boolean, dimension: Dp, backgroundColor: Color, contentColor: Color, borderColor: Color?, label: String, onClick: () -> Unit, content: @Composable () -> Unit) {
+    Button(
+        enabled = enabled,
+        onClick = onClick,
+        modifier = Modifier.size(dimension).semantics { contentDescription = label },
+        shape = CircleShape,
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = backgroundColor, contentColor = contentColor, disabledContainerColor = backgroundColor.copy(alpha = 0.42f), disabledContentColor = contentColor.copy(alpha = 0.42f)),
+        border = if (borderColor != null) BorderStroke(1.dp, borderColor) else null
+    ) { content() }
 }
 
 @Composable
@@ -61,9 +97,14 @@ private fun DowePaginationButton(enabled: Boolean, selected: Boolean, dimension:
         modifier = Modifier.size(dimension).semantics { contentDescription = label },
         shape = RoundedCornerShape(10.dp),
         contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = if (selected) backgroundColor else Color.Transparent, contentColor = if (selected) contentColor else DoweDesign.backgroundText, disabledContainerColor = if (selected) backgroundColor.copy(alpha = 0.4f) else Color.Transparent, disabledContentColor = DoweDesign.backgroundText.copy(alpha = 0.4f)),
+        colors = ButtonDefaults.buttonColors(containerColor = if (selected) backgroundColor else Color.Transparent, contentColor = if (selected) contentColor else DoweDesign.backgroundText, disabledContainerColor = if (selected) backgroundColor.copy(alpha = 0.42f) else Color.Transparent, disabledContentColor = DoweDesign.backgroundText.copy(alpha = 0.42f)),
         border = if (selected && borderColor != null) BorderStroke(1.dp, borderColor) else null
     ) { content() }
+}
+
+@Composable
+private fun DowePaginationIndicator(active: Boolean, dot: Boolean, enabled: Boolean, inactiveWidth: Dp, activeWidth: Dp, height: Dp, dotSize: Dp, dotActiveScalePercent: Int = 125, color: Color, label: String, onClick: () -> Unit) {
+    Box(modifier = Modifier.width(if (dot) dotSize else if (active) activeWidth else inactiveWidth).height(if (dot) dotSize else height).clip(if (dot) CircleShape else RoundedCornerShape(999.dp)).background(color.copy(alpha = if (active) 1f else 0.28f)).graphicsLayer { val scale = if (dot && active) dotActiveScalePercent / 100f else 1f; scaleX = scale; scaleY = scale; alpha = if (enabled) 1f else 0.42f }.clickable(enabled = enabled, onClick = onClick).semantics { contentDescription = label })
 }
 
 @Composable
@@ -168,7 +209,11 @@ private fun DoweMap(centerLat: String, centerLng: String, zoom: Int, height: Str
                 }
             }
         }
-        if (showControls) Column(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).clip(RoundedCornerShape(10.dp)).background(DoweDesign.background.copy(alpha = 0.92f))) { Text("+", modifier = Modifier.padding(10.dp), fontWeight = FontWeight.Bold); Text("-", modifier = Modifier.padding(10.dp), fontWeight = FontWeight.Bold) }
+        if (showControls) Column(modifier = Modifier.align(Alignment.TopEnd).width(34.dp).clip(RoundedCornerShape(10.dp)).background(DoweDesign.background.copy(alpha = 0.92f))) {
+            Text("+", modifier = Modifier.fillMaxWidth().height(34.dp).wrapContentHeight(Alignment.CenterVertically), color = contentColor, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(contentColor.copy(alpha = 0.12f)))
+            Text("-", modifier = Modifier.fillMaxWidth().height(34.dp).wrapContentHeight(Alignment.CenterVertically), color = contentColor, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
+        }
         if (showScale) Text("1 km", modifier = Modifier.align(Alignment.BottomStart).padding(12.dp).clip(RoundedCornerShape(999.dp)).background(DoweDesign.background.copy(alpha = 0.92f)).padding(horizontal = 10.dp, vertical = 4.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold)
         if (showLocationControl) Button(onClick = { onLocation?.invoke() }, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) { Text("⌖") }
     }
@@ -178,7 +223,7 @@ private fun doweMapHeight(value: String): Dp =
     value.removeSuffix("px").toFloatOrNull()?.dp ?: 400.dp
 
 @Composable
-private fun DoweBadge(text: String, position: String, backgroundColor: Color, contentColor: Color, modifier: Modifier, content: @Composable () -> Unit) {
+private fun DoweBadge(text: String, position: String, backgroundColor: Color, contentColor: Color, fontSize: TextUnit, height: Dp, horizontalPadding: Dp, verticalPadding: Dp, modifier: Modifier, content: @Composable () -> Unit) {
     Box(modifier = modifier) {
         content()
         Text(
@@ -189,9 +234,10 @@ private fun DoweBadge(text: String, position: String, backgroundColor: Color, co
                 .zIndex(1f)
                 .clip(RoundedCornerShape(999.dp))
                 .background(backgroundColor)
-                .padding(horizontal = 6.dp, vertical = 2.dp),
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding)
+                .height(height),
             color = contentColor,
-            fontSize = 12.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1
         )
@@ -217,25 +263,25 @@ private fun doweBadgeAlignment(position: String): Alignment =
     }
 
 @Composable
-private fun DoweChip(text: String, size: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier, compact: Boolean, onClose: (() -> Unit)?, start: (@Composable () -> Unit)?, end: (@Composable () -> Unit)?) {
+private fun DoweChip(text: String, size: String, height: Dp, horizontalPadding: Dp, textSize: TextUnit, contentGap: Dp, closeAlpha: Float, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier, compact: Boolean, onClose: (() -> Unit)?, start: (@Composable () -> Unit)?, end: (@Composable () -> Unit)?) {
     val shape = RoundedCornerShape(DoweDesign.radius)
     val surface: @Composable (Modifier) -> Unit = { surfaceModifier ->
         Row(
             modifier = surfaceModifier
-                .height(doweChipHeight(size))
+                .height(height)
                 .clip(shape)
                 .background(backgroundColor)
                 .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
-                .padding(horizontal = doweChipPadding(size)),
+                .padding(horizontal = horizontalPadding),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(contentGap)
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 start?.invoke()
-                Text(text = text, color = contentColor, fontSize = doweChipTextSize(size), fontWeight = FontWeight.Medium, maxLines = 1)
+                Text(text = text, color = contentColor, fontSize = textSize, fontWeight = FontWeight.Medium, maxLines = 1)
                 end?.invoke()
                 if (onClose != null) {
-                    Text(text = "x", modifier = Modifier.clickable(onClick = onClose), color = contentColor.copy(alpha = 0.72f), fontSize = doweChipTextSize(size), fontWeight = FontWeight.Bold)
+                    Text(text = "x", modifier = Modifier.clickable(onClick = onClose), color = contentColor.copy(alpha = closeAlpha), fontSize = textSize, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -275,18 +321,18 @@ private fun doweChipTextSize(size: String): TextUnit =
     }
 
 @Composable
-private fun DoweSkeleton(variant: String, animation: String, modifier: Modifier) {
+private fun DoweSkeleton(variant: String, animation: String, textHeight: Dp, defaultRadius: Dp, pulseAlpha: Float, pulseDurationMs: Int, modifier: Modifier) {
     val alpha by animateFloatAsState(
-        targetValue = if (animation == "pulse") 0.45f else 1f,
-        animationSpec = tween(durationMillis = 900)
+        targetValue = if (animation == "pulse") pulseAlpha else 1f,
+        animationSpec = tween(durationMillis = pulseDurationMs)
     )
     val shape = when (variant) {
         "circular" -> RoundedCornerShape(999.dp)
         "rectangular" -> RoundedCornerShape(0.dp)
         "rounded" -> RoundedCornerShape(DoweDesign.radius)
-        else -> RoundedCornerShape(6.dp)
+        else -> RoundedCornerShape(defaultRadius)
     }
-    val base = if (variant == "text") modifier.height(16.dp).fillMaxWidth() else modifier
+    val base = if (variant == "text") modifier.height(textHeight).fillMaxWidth() else modifier
     Box(modifier = base.clip(shape).background(DoweDesign.muted.copy(alpha = if (animation == "none") 1f else alpha)))
 }
 

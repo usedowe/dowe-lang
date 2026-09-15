@@ -64,9 +64,20 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(!html.contains(r#"class="accordion-arrow">⌄"#));
     assert!(html.contains(r#"data-dowe-carousel data-dowe-carousel-index="0""#));
     assert!(html.contains(r#"role="region" aria-roledescription="carousel"#));
+    assert!(html.contains(r#"<div class="carousel-stage"><div class="carousel-viewport"#));
+    assert!(html.contains(r#"data-dowe-carousel-prev"#));
+    assert!(html.contains(r#"carousel-nav is-prev"#));
     assert!(html.contains(r#"class="carousel-viewport" role="group"#));
     assert!(html.contains(r#"aria-roledescription="slide" aria-label="Slide 1 of"#));
     assert!(html.contains(r#"data-dowe-carousel-variant="coverFlow""#));
+    assert!(html.contains(r#"data-dowe-carousel-snap="true""#));
+    assert!(html.contains(r#"data-dowe-carousel-navigation-placement="overlay-stage""#));
+    assert!(html.contains(r#"data-dowe-carousel-controls-placement="below-track""#));
+    assert!(html.contains(r#"--dowe-carousel-navigation-size:40px"#));
+    assert!(html.contains("--dowe-carousel-content-gap:12px;--dowe-carousel-viewport-padding:0px;--dowe-carousel-vertical-height:448px;"));
+    assert!(css.contains("height:var(--dowe-carousel-vertical-height)"));
+    assert!(css.contains("min(var(--dowe-carousel-slide-max),var(--dowe-carousel-slide-fraction))"));
+    assert!(html.contains(r#"--dowe-carousel-indicator-active-width:32px"#));
     assert!(html.contains("is-cover-flow"));
     assert!(html.contains(r#"class="checkbox-input is-success""#));
     assert!(html.contains(r#"data-dowe-bind="accepted""#));
@@ -137,6 +148,7 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(css.contains(".radio-group.is-horizontal{flex-direction:row;flex-wrap:wrap;}"));
     assert!(css.contains(".toggle-input{position:relative;"));
     assert!(css.contains(".color-picker-popover{position:fixed;"));
+    assert!(css.contains("color-mix(in srgb,var(--dowe-slider-color) 18%,transparent)"));
     assert!(css.contains(".color-picker-canvas{position:relative;"));
     assert!(css.contains(".color-field.is-floating.is-lg{min-height:3.5rem}"));
     assert!(css.contains(".color-field.is-floating .color-control-trigger{min-height:var(--dowe-control-min-height);padding-top:.5rem;}"));
@@ -147,6 +159,9 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(css.contains(".accordion-label{font-size:.9375rem;font-weight:700;line-height:1.35;}"));
     assert!(css.contains(".accordion-header.is-open .accordion-arrow{transform:rotate(90deg);}"));
     assert!(css.contains(".media-icon>svg{width:100%;height:100%;}"));
+    assert!(css.contains(".media-icon{display:inline-flex;width:1.25rem;height:1.25rem;"));
+    assert!(css.contains(".video-action{display:inline-flex;width:2rem;height:2rem;"));
+    assert!(!css.contains(".video-action{width:1.875rem;height:1.875rem}"));
     assert!(css.contains("@keyframes dowe-media-wave-appear"));
     assert!(css.contains(".media-bars.loaded .media-bar.active"));
     assert!(router.contains("function hydrateAudios(root)"));
@@ -157,6 +172,7 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(router.contains("aria-valuetext"));
     assert!(router.contains("function toggleAccordion(trigger)"));
     assert!(router.contains("function renderCarousel(root)"));
+    assert!(router.contains("function carouselUsesSnap(root)"));
     assert!(router.contains("event.key===\"ArrowLeft\""));
     assert!(router.contains("event.key===\"Home\""));
     assert!(router.contains("__doweCarouselHovering"));
@@ -189,13 +205,15 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(router.contains("goToCarousel"));
     assert!(router.contains("translateX(${phase*24}px)"));
     assert!(css.contains(".carousel-viewport::-webkit-scrollbar"));
+    assert!(css.contains(".carousel-stage{position:relative;"));
+    assert!(css.contains(".carousel-nav.is-prev{inset-inline-start:var(--dowe-carousel-navigation-inset);}"));
     assert!(css.contains("scrollbar-width:none"));
     assert!(css.contains(".carousel.is-vertical{flex-direction:column"));
     assert!(css.contains(".carousel.is-vertical.is-controls .carousel-viewport"));
     assert!(css.contains("dowe-carousel-parallax-vertical"));
     assert!(css.contains(".carousel-nav:disabled,.carousel-control:disabled"));
     assert!(css.contains("-webkit-overflow-scrolling:touch"));
-    assert!(css.contains("border:0;border-radius:1.25rem;background:transparent;box-shadow:none"));
+    assert!(css.contains("border:0;border-radius:0;background:transparent;box-shadow:none"));
     for variant in [
         "is-simple",
         "is-snapping",

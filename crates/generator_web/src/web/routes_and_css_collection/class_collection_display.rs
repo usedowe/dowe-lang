@@ -112,12 +112,21 @@ fn collect_display_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>)
                 "toggle-group-icon".to_string(),
                 "is-active".to_string(),
                 "pagination".to_string(),
+                "pagination-controls".to_string(),
+                "button".to_string(),
+                "icon-button".to_string(),
+                "button-sm".to_string(),
+                "button-md".to_string(),
+                "rounded-full".to_string(),
                 "pagination-nav".to_string(),
                 "pagination-page".to_string(),
                 "pagination-icon".to_string(),
                 "pagination-ellipsis".to_string(),
                 "pagination-ellipsis-start".to_string(),
                 "pagination-ellipsis-end".to_string(),
+                "pagination-indicators".to_string(),
+                "pagination-indicator".to_string(),
+                "pagination-count".to_string(),
             ]);
         }
         ViewNode::Collapsible { props, children } => {

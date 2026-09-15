@@ -218,7 +218,7 @@
 }
 .image-cropper-trigger:disabled,.image-cropper.is-disabled {
   cursor:not-allowed;
-  opacity:.55;
+  opacity:.5;
 }
 .image-cropper-trigger:focus-visible,.image-cropper-action:focus-visible,.image-cropper-dialog-close:focus-visible,.image-cropper-zoom input:focus-visible {
   outline:2px solid var(--dowe-primary);

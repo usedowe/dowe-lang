@@ -51,7 +51,7 @@ fn swift_runtime_textarea_control() -> &'static str {
                         .font(.system(size: fontSize))
                         .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
                         .foregroundStyle(contentColor.opacity(0.55))
-                        .padding(CGFloat(8))
+                        .padding(CGFloat(12))
                         .padding(.top, floating ? CGFloat(12) : CGFloat(0))
                 }
                 if let label, floating {
@@ -59,7 +59,7 @@ fn swift_runtime_textarea_control() -> &'static str {
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(contentColor.opacity(0.72))
-                        .padding(.horizontal, CGFloat(8))
+                        .padding(.horizontal, CGFloat(12))
                         .padding(.top, CGFloat(5))
                 }
                 TextEditor(text: textBinding)
@@ -72,7 +72,7 @@ fn swift_runtime_textarea_control() -> &'static str {
                     .scrollContentBackground(.hidden)
                     .padding(.top, floating ? CGFloat(12) : CGFloat(0))
             }
-            .padding(CGFloat(8))
+            .padding(CGFloat(12))
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: CGFloat(12)))
             .overlay(RoundedRectangle(cornerRadius: CGFloat(12)).stroke(contentColor.opacity(0.22), lineWidth: CGFloat(1)))

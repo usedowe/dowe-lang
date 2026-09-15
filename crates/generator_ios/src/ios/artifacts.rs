@@ -10,6 +10,7 @@ use dowe_components::{
     DropdownProps, DropzoneProps, EditorProps, ElementProps,
     EmptyProps, FabAction, FabProps, FlexDirection, FlexItem, FontConfig, FontFamily,
     FormValidationRuleKind, GapSize, GapValue, GridAlignment, GridProps, GridTracks,
+    PaginationControlContract, ChipVisualContract,
     INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps,
     ImageCropperProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NavMenuItem,
     NavMenuItemProps,

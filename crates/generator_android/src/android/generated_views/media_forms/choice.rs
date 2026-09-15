@@ -43,7 +43,7 @@ private fun DoweRadioGroup(value: String, onValueChange: (String) -> Unit, optio
 
 @Composable
 private fun DoweRadioGroupOption(option: DoweRadioOption, selected: Boolean, size: String, accentColor: Color, onSelect: () -> Unit) {
-    Row(modifier = Modifier.clickable(enabled = !option.disabled) { onSelect() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier = Modifier.alpha(if (option.disabled) 0.5f else 1f).clickable(enabled = !option.disabled) { onSelect() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
             modifier = Modifier
                 .width(doweRadioSize(size))
@@ -96,7 +96,7 @@ private fun DoweRadioCard(value: String, onValueChange: (String) -> Unit, option
 @Composable
 private fun DoweRadioCardOptionView(option: DoweRadioCardOption, selected: Boolean, size: String, accentColor: Color, modifier: Modifier, onSelect: () -> Unit) {
     val cardColor = if (selected) accentColor.copy(alpha = 0.1f) else DoweDesign.surface
-    Box(modifier = modifier.clip(RoundedCornerShape(12.dp)).background(cardColor).border(1.dp, if (selected) accentColor else DoweDesign.muted.copy(alpha = 0.24f), RoundedCornerShape(12.dp)).clickable(enabled = !option.disabled) { onSelect() }.padding(16.dp)) {
+    Box(modifier = modifier.alpha(if (option.disabled) 0.5f else 1f).clip(RoundedCornerShape(12.dp)).background(cardColor).border(1.dp, if (selected) accentColor else DoweDesign.muted.copy(alpha = 0.24f), RoundedCornerShape(12.dp)).clickable(enabled = !option.disabled) { onSelect() }.padding(16.dp)) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val iconViewBox = option.iconViewBox
             val iconPaths = option.iconPaths
@@ -120,7 +120,7 @@ private fun DoweRadioCardOptionView(option: DoweRadioCardOption, selected: Boole
 
 @Composable
 private fun DoweToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean, label: String?, labelLeft: String?, labelRight: String?, name: String?, modifier: Modifier, accentColor: Color) {
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier = modifier.alpha(if (enabled) 1f else 0.5f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (labelLeft != null) {
             Text(labelLeft, color = accentColor.copy(alpha = if (checked) 0.45f else 1f))
         }

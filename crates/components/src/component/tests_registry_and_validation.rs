@@ -48,5 +48,6 @@ include!("tests_basic_components.rs");
 include!("tests_data_components.rs");
 include!("tests_tree_component.rs");
 include!("tests_navigation_and_forms.rs");
+include!("tests_visual_contracts.rs");
 include!("tests_layout_and_styles.rs");
 include!("tests_action_components.rs");

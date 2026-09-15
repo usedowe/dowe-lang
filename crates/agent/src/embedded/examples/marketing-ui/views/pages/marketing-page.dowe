@@ -1,0 +1,19 @@
+import EditorialHero from "@/views/components/editorial-hero"
+import ProofMetrics from "@/views/components/proof-metrics"
+import SplitMedia from "@/views/components/split-media"
+import OpportunityBand from "@/views/components/opportunity-band"
+import GrowthLadder from "@/views/components/growth-ladder"
+import MediaCta from "@/views/components/media-cta"
+import FaqEditorial from "@/views/components/faq-editorial"
+import ContactPanel from "@/views/components/contact-panel"
+
+page MarketingPage
+  EditorialHero
+  Section boxed:true bg:"background"
+    ProofMetrics
+  SplitMedia
+  OpportunityBand
+  GrowthLadder
+  MediaCta
+  FaqEditorial
+  ContactPanel

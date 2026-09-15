@@ -9,31 +9,38 @@ r#"struct DoweEmpty: View {
     let backgroundColor: Color
     let contentColor: Color
     let accentColor: Color
+    let panelPadding: CGFloat
+    let contentGap: CGFloat
+    let iconSize: CGFloat
+    let titleSize: CGFloat
+    let descriptionSize: CGFloat
+    let actionHorizontalPadding: CGFloat
+    let actionVerticalPadding: CGFloat
 
     var body: some View {
-        VStack(spacing: CGFloat(12)) {
+        VStack(spacing: contentGap) {
             DoweSvgView(viewBox: iconViewBox, color: accentColor, paths: iconPaths)
-                .frame(width: CGFloat(112), height: CGFloat(112))
+                .frame(width: iconSize, height: iconSize)
             Text(title ?? defaultTitle)
-                .font(.title3.weight(.semibold))
+                .font(.system(size: titleSize, weight: .semibold))
                 .foregroundStyle(contentColor)
             Text(description ?? defaultDescription)
-                .font(.subheadline)
+                .font(.system(size: descriptionSize))
                 .foregroundStyle(contentColor.opacity(0.64))
                 .multilineTextAlignment(.center)
             if let action {
                 Button(actionLabel, action: action)
                     .buttonStyle(.plain)
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, CGFloat(16))
-                    .padding(.vertical, CGFloat(9))
+                    .font(.system(size: descriptionSize, weight: .semibold))
+                    .padding(.horizontal, actionHorizontalPadding)
+                    .padding(.vertical, actionVerticalPadding)
                     .background(accentColor.opacity(0.12))
                     .foregroundStyle(accentColor)
                     .clipShape(Capsule())
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(CGFloat(24))
+        .padding(panelPadding)
     }
 
     private var defaultTitle: String {

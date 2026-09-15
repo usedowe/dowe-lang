@@ -47,10 +47,31 @@ private fun DoweAccordionItem(label: String, disabled: Boolean, open: Boolean, b
     }
 }
 
+private data class DoweCarouselGeometry(
+    val contentGap: Int,
+    val viewportPadding: Int,
+    val verticalViewportHeight: Int,
+    val slideFractionPercent: Int,
+    val slideMaxWidth: Int?,
+)
+
 private data class DoweCarouselSlideSpec(val id: String, val content: @Composable () -> Unit)
 
+private data class DoweCarouselControlContract(
+    val navigationSize: Int,
+    val navigationInset: Int,
+    val controlSize: Int,
+    val controlGap: Int,
+    val indicatorGap: Int,
+    val indicatorHeight: Int,
+    val indicatorInactiveWidth: Int,
+    val indicatorActiveWidth: Int,
+    val indicatorDotSize: Int,
+    val indicatorDotActiveScalePercent: Int,
+)
+
 @Composable
-private fun DoweCarousel(variant: String, slides: List<DoweCarouselSlideSpec>, autoplay: Boolean, autoplayInterval: Int, disableLoop: Boolean, hideControls: Boolean, hideIndicators: Boolean, showNavigation: Boolean, showCounter: Boolean, orientation: String, size: String, indicatorType: String, title: String?, slideWidth: Int?, slideHeight: Int?, slidesPerView: Int, gap: Int, modifier: Modifier, accentColor: Color) {
+private fun DoweCarousel(variant: String, snap: Boolean, control: DoweCarouselControlContract, geometry: DoweCarouselGeometry, slides: List<DoweCarouselSlideSpec>, autoplay: Boolean, autoplayInterval: Int, disableLoop: Boolean, hideControls: Boolean, hideIndicators: Boolean, showNavigation: Boolean, showCounter: Boolean, orientation: String, size: String, indicatorType: String, title: String?, slideWidth: Int?, slideHeight: Int?, slidesPerView: Int, gap: Int, previousIcon: @Composable () -> Unit, nextIcon: @Composable () -> Unit, modifier: Modifier, accentColor: Color) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val slideCount = slides.size
@@ -85,28 +106,23 @@ private fun DoweCarousel(variant: String, slides: List<DoweCarouselSlideSpec>, a
             }
         }
     }
-    Column(modifier = modifier.semantics { contentDescription = "${title ?: "Carousel"}, slide ${currentIndex + 1} of $slideCount" }, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (title != null) Text(title, fontWeight = FontWeight.Bold, color = accentColor)
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth().clipToBounds()) {
+    Column(modifier = modifier.semantics { contentDescription = "${title ?: "Carousel"}, slide ${currentIndex + 1} of $slideCount" }, verticalArrangement = Arrangement.spacedBy(geometry.contentGap.dp)) {
+        if (title != null) Text(title, color = accentColor, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold)
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(geometry.viewportPadding.dp).clipToBounds()) {
             val viewportWidth = maxWidth
             val resolvedWidth = when {
                 slideWidth != null -> slideWidth.dp
-                variant == "masonry" -> minOf(200.dp, viewportWidth * 0.72f)
-                variant == "sticky" -> minOf(672.dp, viewportWidth * 0.88f)
-                variant == "stories" -> minOf(384.dp, viewportWidth * 0.82f)
-                variant == "smartStack" -> minOf(352.dp, viewportWidth * 0.8f)
-                variant == "cardStack" -> minOf(448.dp, viewportWidth * 0.84f)
-                variant == "flipbook" -> minOf(480.dp, viewportWidth * 0.88f)
-                slidesPerView > 1 -> (viewportWidth - gap.dp * (slidesPerView - 1)) / slidesPerView
+                geometry.slideMaxWidth != null -> minOf(geometry.slideMaxWidth.dp, viewportWidth * (geometry.slideFractionPercent / 100f))
+                slidesPerView > 1 -> maxOf(0.dp, (viewportWidth - gap.dp * (slidesPerView - 1)) / slidesPerView)
                 else -> viewportWidth
             }
-            val shouldSnap = variant !in listOf("simple", "masonry", "rtl", "sticky")
+            val shouldSnap = snap
             val snapBehavior = rememberSnapFlingBehavior(lazyListState = listState)
             val freeBehavior = ScrollableDefaults.flingBehavior()
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (orientation == "vertical") {
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
+                        modifier = Modifier.fillMaxWidth().height(geometry.verticalViewportHeight.dp),
                         state = listState,
                         verticalArrangement = Arrangement.spacedBy(gap.dp),
                         flingBehavior = if (shouldSnap) snapBehavior else freeBehavior
@@ -129,27 +145,42 @@ private fun DoweCarousel(variant: String, slides: List<DoweCarouselSlideSpec>, a
                     }
                 }
                 if (showNavigation) {
-                    Row(modifier = Modifier.fillMaxWidth().align(Alignment.Center), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(modifier = Modifier.size(36.dp), enabled = !disableLoop || currentIndex > 0, colors = ButtonDefaults.textButtonColors(contentColor = accentColor), contentPadding = PaddingValues(0.dp), onClick = { moveTo(currentIndex - 1) }) { Text("‹", fontSize = 22.sp) }
-                        TextButton(modifier = Modifier.size(36.dp), enabled = !disableLoop || currentIndex < slideCount - 1, colors = ButtonDefaults.textButtonColors(contentColor = accentColor), contentPadding = PaddingValues(0.dp), onClick = { moveTo(currentIndex + 1) }) { Text("›", fontSize = 22.sp) }
+                    if (orientation == "vertical") {
+                        Column(modifier = Modifier.fillMaxHeight().align(Alignment.Center).padding(vertical = control.navigationInset.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.CenterHorizontally) {
+                            DoweIconButton(enabled = !disableLoop || currentIndex > 0, dimension = control.navigationSize.dp, backgroundColor = DoweDesign.surface, contentColor = accentColor, borderColor = accentColor.copy(alpha = 0.24f), label = "Previous slide", onClick = { moveTo(currentIndex - 1) }) { previousIcon() }
+                            DoweIconButton(enabled = !disableLoop || currentIndex < slideCount - 1, dimension = control.navigationSize.dp, backgroundColor = DoweDesign.surface, contentColor = accentColor, borderColor = accentColor.copy(alpha = 0.24f), label = "Next slide", onClick = { moveTo(currentIndex + 1) }) { nextIcon() }
+                        }
+                    } else {
+                        Row(modifier = Modifier.fillMaxWidth().align(Alignment.Center).padding(horizontal = control.navigationInset.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            DoweIconButton(enabled = !disableLoop || currentIndex > 0, dimension = control.navigationSize.dp, backgroundColor = DoweDesign.surface, contentColor = accentColor, borderColor = accentColor.copy(alpha = 0.24f), label = "Previous slide", onClick = { moveTo(currentIndex - 1) }) { previousIcon() }
+                            DoweIconButton(enabled = !disableLoop || currentIndex < slideCount - 1, dimension = control.navigationSize.dp, backgroundColor = DoweDesign.surface, contentColor = accentColor, borderColor = accentColor.copy(alpha = 0.24f), label = "Next slide", onClick = { moveTo(currentIndex + 1) }) { nextIcon() }
+                        }
                     }
                 }
             }
         }
-        if (!hideControls || variant == "controls") {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(modifier = Modifier.height(32.dp), enabled = !disableLoop || currentIndex > 0, colors = ButtonDefaults.textButtonColors(contentColor = accentColor), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp), onClick = { moveTo(currentIndex - 1) }) { Text("Previous", fontSize = 14.sp) }
-                TextButton(modifier = Modifier.height(32.dp), enabled = !disableLoop || currentIndex < slideCount - 1, colors = ButtonDefaults.textButtonColors(contentColor = accentColor), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp), onClick = { moveTo(currentIndex + 1) }) { Text("Next", fontSize = 14.sp) }
-            }
-        }
-        if (!hideIndicators || variant == "dots" || variant == "thumbnails") {
-            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                slides.forEachIndexed { index, slide ->
-                    TextButton(modifier = Modifier.heightIn(min = 28.dp), colors = ButtonDefaults.textButtonColors(contentColor = if (index == currentIndex) accentColor else accentColor.copy(alpha = 0.45f)), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp), onClick = { moveTo(index) }) { Text(if (variant == "thumbnails") slide.id else if (indicatorType == "dot" || variant == "dots") "•" else "${index + 1}", fontSize = if (variant == "thumbnails") 12.sp else 16.sp) }
+        if (!hideControls || variant == "controls" || !hideIndicators || variant == "dots" || variant == "thumbnails" || showCounter) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(control.controlGap.dp, Alignment.CenterHorizontally)) {
+                if (!hideControls || variant == "controls") {
+                    DoweIconButton(enabled = !disableLoop || currentIndex > 0, dimension = control.controlSize.dp, backgroundColor = DoweDesign.surface, contentColor = accentColor, borderColor = accentColor.copy(alpha = 0.24f), label = "Previous slide", onClick = { moveTo(currentIndex - 1) }) { previousIcon() }
+                }
+                if (!hideIndicators || variant == "dots" || variant == "thumbnails") {
+                    Row(modifier = Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(control.indicatorGap.dp)) {
+                        slides.forEachIndexed { index, slide ->
+                            if (variant == "thumbnails") {
+                                TextButton(modifier = Modifier.heightIn(min = 28.dp), colors = ButtonDefaults.textButtonColors(contentColor = if (index == currentIndex) accentColor else accentColor.copy(alpha = 0.45f)), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp), onClick = { moveTo(index) }) { Text(slide.id, fontSize = 12.sp) }
+                            } else {
+                                DowePaginationIndicator(active = index == currentIndex, dot = indicatorType == "dot" || variant == "dots", enabled = true, inactiveWidth = control.indicatorInactiveWidth.dp, activeWidth = control.indicatorActiveWidth.dp, height = control.indicatorHeight.dp, dotSize = control.indicatorDotSize.dp, dotActiveScalePercent = control.indicatorDotActiveScalePercent, color = accentColor, label = "Go to slide ${index + 1}") { moveTo(index) }
+                            }
+                        }
+                    }
+                }
+                if (showCounter) Text("${currentIndex + 1} / $slideCount", color = accentColor, maxLines = 1)
+                if (!hideControls || variant == "controls") {
+                    DoweIconButton(enabled = !disableLoop || currentIndex < slideCount - 1, dimension = control.controlSize.dp, backgroundColor = DoweDesign.surface, contentColor = accentColor, borderColor = accentColor.copy(alpha = 0.24f), label = "Next slide", onClick = { moveTo(currentIndex + 1) }) { nextIcon() }
                 }
             }
         }
-        if (showCounter) Text("${currentIndex + 1} / $slideCount", color = accentColor)
     }
 }
 

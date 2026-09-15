@@ -1,14 +1,14 @@
 fn android_runtime_empty_motion_text() -> &'static str {
     r#"@Composable
-private fun DoweEmpty(kind: String, title: String?, description: String?, actionLabel: String, action: (() -> Unit)?, iconViewBox: DoweSvgViewBox, iconPaths: List<DoweSvgPath>, backgroundColor: Color, contentColor: Color, accentColor: Color, modifier: Modifier) {
+private fun DoweEmpty(kind: String, title: String?, description: String?, actionLabel: String, action: (() -> Unit)?, iconViewBox: DoweSvgViewBox, iconPaths: List<DoweSvgPath>, panelPadding: Dp, contentGap: Dp, iconSize: Dp, titleSize: TextUnit, descriptionSize: TextUnit, actionHorizontalPadding: Dp, actionVerticalPadding: Dp, backgroundColor: Color, contentColor: Color, accentColor: Color, modifier: Modifier) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(24.dp),
+        modifier = modifier.fillMaxWidth().padding(panelPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(contentGap)
     ) {
-        DoweSvg(viewBox = iconViewBox, modifier = Modifier.width(112.dp).height(112.dp), color = accentColor, paths = iconPaths)
-        Text(text = title ?: doweEmptyTitle(kind), color = contentColor, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-        Text(text = description ?: doweEmptyDescription(kind), color = contentColor.copy(alpha = 0.64f), fontSize = 14.sp, lineHeight = 20.sp)
+        DoweSvg(viewBox = iconViewBox, modifier = Modifier.width(iconSize).height(iconSize), color = accentColor, paths = iconPaths)
+        Text(text = title ?: doweEmptyTitle(kind), color = contentColor, fontSize = titleSize, fontWeight = FontWeight.SemiBold)
+        Text(text = description ?: doweEmptyDescription(kind), modifier = Modifier.fillMaxWidth(), color = contentColor.copy(alpha = 0.64f), fontSize = descriptionSize, lineHeight = descriptionSize * 1.43f, textAlign = TextAlign.Center)
         if (action != null) {
             Text(
                 text = actionLabel,
@@ -16,7 +16,7 @@ private fun DoweEmpty(kind: String, title: String?, description: String?, action
                     .clip(RoundedCornerShape(999.dp))
                     .background(accentColor.copy(alpha = 0.12f))
                     .clickable(onClick = action)
-                    .padding(horizontal = 16.dp, vertical = 9.dp),
+                    .padding(horizontal = actionHorizontalPadding, vertical = actionVerticalPadding),
                 color = accentColor,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
@@ -300,6 +300,7 @@ private fun DoweRecord(name: String, url: String?, disabled: Boolean, maxDuratio
             .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
             .then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(16.dp)) else Modifier)
+            .alpha(if (disabled) 0.5f else 1f)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)

@@ -1,4 +1,13 @@
 #[test]
+fn badge_css_uses_shared_visual_contract_metrics() {
+    let css = super::design_css();
+    assert!(css.contains(".badge-content{"));
+    assert!(css.contains("box-sizing:border-box;"));
+    assert!(css.contains("padding:.125rem .375rem;"));
+    assert!(css.contains("font-weight:600;"));
+}
+
+#[test]
 fn renders_display_and_overlay_components_markup_runtime_and_css() {
     let root = Path::new("/project");
     let page_tree = display_overlay_tree();
@@ -35,6 +44,7 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     assert!(html.contains(r#"class="dropdown-popover is-solid is-surface""#));
     assert!(html.contains(r#"data-dowe-command-open="modal01""#));
     assert!(page.css_content.contains(".avatar.is-solid.is-success"));
+    assert!(css.contains("border:3px solid var(--dowe-background)"));
     assert!(page.css_content.contains(".w-4{width:1rem;}"));
     assert!(page.css_content.contains(".h-4{height:1rem;}"));
     assert!(
@@ -54,6 +64,9 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     assert!(css.contains(".toast-icon{flex:0 0 auto;"));
     assert!(css.contains(".tooltip-arrow{background-color:inherit;}"));
     assert!(css.contains("@keyframes dowe-skeleton-pulse"));
+    assert!(css.contains("--skeleton-pulse-duration:900ms"));
+    assert!(css.contains("animation:dowe-skeleton-pulse var(--skeleton-pulse-duration) ease-in-out infinite"));
+    assert!(css.contains("opacity:var(--skeleton-pulse-alpha)"));
     assert!(css.contains(".modal{position:relative;display:flex;max-width:min(100%,35rem);max-height:calc(100vh - 2rem);flex-direction:column;gap:1rem;overflow:hidden;padding:1.25rem;"));
     assert!(css.contains(
         ".drawer-close,.modal-close,.toast-close{display:inline-flex;width:1.75rem;height:1.75rem;"
@@ -261,4 +274,3 @@ fn renders_reactive_button_loading_spinner_and_runtime_binding() {
     assert!(router.contains("doweButtonLoading"));
     assert!(router.contains("aria-busy"));
 }
-

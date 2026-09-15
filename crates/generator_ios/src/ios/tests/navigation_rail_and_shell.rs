@@ -142,6 +142,8 @@ fn generates_swiftui_navigation_shell_components() {
     let views = swift_content(&output);
 
     assert!(views.contains("DoweNavMenu(gap:"));
+    assert!(views.contains("DoweNavMenu(gap: CGFloat(8)"));
+    assert!(views.contains("paddingHorizontal: CGFloat(16), paddingVertical: CGFloat(8)"));
     assert!(views.contains("openIndex = openIndex == index ? nil : index"));
     assert!(
         views.contains(

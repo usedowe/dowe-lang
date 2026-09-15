@@ -90,6 +90,7 @@ fn generates_compose_and_dev_tabs() {
     assert!(views.content.contains("accentColor = DoweDesign.primary"));
     assert!(views.content.contains("Modifier.drawBehind"));
     assert!(views.content.contains("drawLine(accentColor"));
+    assert!(views.content.contains(".padding(horizontal = if (variant == \"stepper\") 0.dp else 12.dp, vertical = 8.dp)"));
     assert!(
         !views
             .content
@@ -118,6 +119,7 @@ fn generates_compose_and_dev_tabs() {
             .contains(".setGravity(Gravity.CENTER_VERTICAL);\n        doweWrapContentWidth(view")
     );
     assert!(dev.content.contains("doweTabLineBackground("));
+    assert!(dev.content.contains("setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8))"));
     assert!(
         dev.content
             .contains("setVisibility(active ? View.VISIBLE : View.GONE)")
@@ -318,4 +320,3 @@ fn generates_compose_and_dev_drawer() {
     );
     assert!(!dev.content.contains("doweCard(DOWE_SURFACE, null)"));
 }
-

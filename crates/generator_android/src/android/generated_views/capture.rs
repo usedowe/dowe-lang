@@ -39,7 +39,7 @@ private fun DoweCamera(state: DoweReactiveState, facing: String, label: String, 
             }
         },
         enabled = !disabled,
-        modifier = modifier,
+        modifier = modifier.then(if (disabled) Modifier.graphicsLayer { alpha = 0.5f } else Modifier),
         shape = shape,
         colors = ButtonDefaults.buttonColors(containerColor = backgroundColor, contentColor = contentColor)
     ) { Text(label) }
@@ -101,7 +101,7 @@ private fun DoweMicrophone(state: DoweReactiveState, label: String, maxDuration:
             recording = false
         }
     }
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = modifier.graphicsLayer { alpha = if (disabled) 0.5f else 1f }, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = contentColor, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.weight(1f))
         Text("${elapsed / 60000}:${(elapsed / 1000 % 60).toString().padStart(2, '0')}", color = contentColor)

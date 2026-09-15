@@ -168,11 +168,18 @@ fn render_dev_android_overlay_node(
                 );
             }
             output.push_str(&format!(
-                "        TextView {label} = doweText({}, {}, 12f, 700, 0f, 1f, {});\n        {label}.setSingleLine(true);\n        {label}.setGravity(Gravity.CENTER);\n        {label}.setPadding(doweDp(6), doweDp(2), doweDp(6), doweDp(2));\n        {label}.setBackground(doweBackground({}, 999f));\n        FrameLayout.LayoutParams {label}Params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, doweDp(20), {gravity});\n        {view}.addView({label}, {label}Params);\n        {label}.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {{\n            v.setTranslationX({translation_x});\n            v.setTranslationY({translation_y});\n        }});\n",
+                "        TextView {label} = doweText({}, {}, {}f, {}, 0f, 1f, {});\n        {label}.setSingleLine(true);\n        {label}.setGravity(Gravity.CENTER);\n        {label}.setPadding(doweDp({}), doweDp({}), doweDp({}), doweDp({}));\n        {label}.setBackground(doweBackground({}, 999f));\n        FrameLayout.LayoutParams {label}Params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, doweDp({}), {gravity});\n        {view}.addView({label}, {label}Params);\n        {label}.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {{\n            v.setTranslationX({translation_x});\n            v.setTranslationY({translation_y});\n        }});\n",
                 dev_text_expression(&props.text, None, context),
                 dev_variant_content(&props.style),
+                dowe_components::BadgeVisualContract::standard().font_size,
+                dowe_components::BadgeVisualContract::standard().font_weight,
                 dev_font_value(current_font),
+                dowe_components::BadgeVisualContract::standard().horizontal_padding,
+                dowe_components::BadgeVisualContract::standard().vertical_padding,
+                dowe_components::BadgeVisualContract::standard().horizontal_padding,
+                dowe_components::BadgeVisualContract::standard().vertical_padding,
                 dev_variant_container(&props.style),
+                dowe_components::BadgeVisualContract::standard().height,
             ));
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
@@ -298,13 +305,10 @@ fn render_dev_android_chip(
     context: &ComposeReactiveContext,
 ) {
     let size = props.style.size.unwrap_or(ButtonSize::Md);
-    let (height, horizontal_padding, text_size) = match size {
-        ButtonSize::Xs => (20, 12, 12),
-        ButtonSize::Sm => (24, 12, 12),
-        ButtonSize::Md => (32, 16, 14),
-        ButtonSize::Lg => (40, 20, 18),
-        ButtonSize::Xl => (48, 24, 24),
-    };
+    let visual = ChipVisualContract::for_size(size);
+    let height = visual.height;
+    let horizontal_padding = visual.horizontal_padding;
+    let text_size = visual.text_size;
     let icon_size = size.chip_icon_size().native_units();
     let view = next_dev_view(counter);
     let content = dev_variant_content(&props.style);
@@ -325,10 +329,11 @@ fn render_dev_android_chip(
     }
     let label = next_dev_view(counter);
     output.push_str(&format!(
-        "        TextView {label} = doweText({}, {}, {text_size}f, 500, 0f, 1.2f, {});\n        {label}.setSingleLine(true);\n        doweAdd({view}, {label}, 8, true);\n",
+        "        TextView {label} = doweText({}, {}, {text_size}f, 500, 0f, 1.2f, {});\n        {label}.setSingleLine(true);\n        doweAdd({view}, {label}, {gap}, true);\n",
         dev_text_expression(value, None, context),
         content,
-        dev_font_value(props.style.style.font.as_ref().or(inherited_font))
+        dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
+        gap = visual.content_gap
     ));
     if let Some(icon) = end {
         let icon_view = render_dev_android_icon_view(icon, counter, output, Some(&content));
@@ -339,10 +344,12 @@ fn render_dev_android_chip(
     if let Some(action) = props.on_close.as_deref().and_then(|name| context.action_id(name)) {
         let close = next_dev_view(counter);
         output.push_str(&format!(
-            "        TextView {close} = doweText(\"x\", {}, {text_size}f, 700, 0f, 1.2f, {});\n        {close}.setGravity(Gravity.CENTER);\n        {close}.setContentDescription(\"Close\");\n        {close}.setOnClickListener(v -> doweRunAction(\"{}\", null));\n        doweAdd({view}, {close}, 8, true);\n",
+            "        TextView {close} = doweText(\"x\", {}, {text_size}f, 700, 0f, 1.2f, {});\n        {close}.setAlpha({close_alpha}f);\n        {close}.setGravity(Gravity.CENTER);\n        {close}.setContentDescription(\"Close\");\n        {close}.setOnClickListener(v -> doweRunAction(\"{}\", null));\n        doweAdd({view}, {close}, {gap}, true);\n",
             content,
             dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
-            escape_java(action)
+            escape_java(action),
+            close_alpha = visual.close_alpha,
+            gap = visual.content_gap
         ));
     }
     apply_dev_android_style(&props.style.style, &view, false, output);

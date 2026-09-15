@@ -143,10 +143,11 @@ or one intentional padding override on the real owner.
 
 Resolve container spacing in this order:
 
-1. Keep the component and theme defaults. An ordinary `Section` already provides
-   `px:{ xs:4 md:6 }` and `py:{ xs:10 md:16 }`; a `Card` already provides `p:{ xs:4 lg:5 }`.
-   Never author `p`, `px`, `py`, `pt`, `pb`, `pl`, or `pr` on a page `Section`, including a
-   responsive object or `p:0`. This is strict in every breakpoint and dimension.
+1. Keep the component and theme defaults. A landing-page `Section` may use the built-in uniform
+   padding `p:{ xs:4 lg:5 }` as its baseline and may add a deliberate responsive `p`, `px`, `py`,
+   or side-padding override when the band needs a different reading rhythm. A dashboard or
+   operational `Section` should omit all `p`, `px`, `py`, `pt`, `pb`, `pl`, and `pr` props so its
+   inner Grid, Flex, Card, or control owns the compact density.
 2. Render the minimal tree. `Grid` and `Flex` default to zero gap; add one `gap` on the owning
    container only when the child group needs explicit nonzero rhythm. Do not add a gap automatically
    with every Grid or Flex, and do not add padding merely to separate its children.
@@ -155,10 +156,12 @@ Resolve container spacing in this order:
    do not repeat the same inset on `Section`, `Grid`, and `Card`.
 4. Use `Box` only for its documented layer responsibility, never as a padding or margin workaround.
 
-Padding on a page Section is not an exception. Keep Section padding omitted even for compact bands,
-heroes, full-viewport compositions, and responsive overrides; move required inner spacing to the
-actual Grid, Flex, Card, or control owner. A transparent `Card variant:"ghost" p:0` used only as a
-layout wrapper is also unnecessary; remove it
+Padding on a dashboard or operational Section is not an exception: keep its Section padding
+props omitted, including `p:0` and responsive overrides, and move required inner spacing to the
+actual Grid, Flex, Card, or control owner. On a landing page, use Section padding deliberately for
+the band rhythm when the default is insufficient; do not duplicate the same inset on Section,
+Grid, and Card. A transparent `Card variant:"ghost" p:0` used only as a layout wrapper is also
+unnecessary; remove it
 unless the Card owns a meaningful semantic or behavioral boundary.
 
 ## Surface hierarchy and modern depth
@@ -383,8 +386,8 @@ entries. `javascript:`, `data:`, and `file:` schemes are rejected.
 advanced neutral layer primitive, not the default styling wrapper. A Box should normally be a
 relative plane with direct absolute children or a fixed viewport layer. `Section` owns
 the outer band (background, cover, overlay, sizing, radius, border, anchor) and generates an inner
-content body with responsive defaults `px:{ xs:4 md:6 }` and `py:{ xs:10 md:16 }`; the larger
-vertical inset separates ordinary page bands without repeated props. `boxed:true` caps and centers
+content body with the same responsive uniform padding as `Card`, `p:{ xs:4 lg:5 }`.
+`boxed:true` caps and centers
 only that body at `96rem` web or `1536` native. `Section background:<preset>` cannot combine with
 `cover` because both are base layers. `Card` defaults to `variant:"solid"`, `scheme:"surface"`,
 `rounded:"md"`, and inner padding `p:{ xs:4 lg:5 }`. `Card color:"white"`, `color:"black"`,

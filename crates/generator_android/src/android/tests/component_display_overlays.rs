@@ -17,6 +17,8 @@ fn generates_native_dropzone_file_picker_hooks() {
     assert!(views.content.contains("doweDropzoneMimeTypes(accept)"));
     assert!(views.content.contains("maxSize = 4096L"));
     assert!(views.content.contains("contentResolver.query"));
+    assert!(views.content.contains(".clip(RoundedCornerShape(DoweDesign.radius))"));
+    assert!(!views.content.contains("Text(if (selectedFiles.isEmpty()) \"Upload\" else \"Selected files\""));
 
     let dev = dev_java_source(&output);
     assert!(dev.content.contains("Intent.ACTION_OPEN_DOCUMENT"));
@@ -64,6 +66,7 @@ fn generates_compose_and_dev_display_overlay_components() {
             .contains("withContext(Dispatchers.IO) { doweLoadImageBitmap(context, source) }")
     );
     assert!(views.content.contains("contentScale = ContentScale.Crop"));
+    assert!(views.content.contains(".border(3.dp, DoweDesign.background, shape)"));
     assert!(views.content.contains(
         "modifier = Modifier.doweShadow(radius = doweResponsive(viewportWidth, xs = 44.dp) ?: 0.dp, shape = RoundedCornerShape(999.dp), color = DoweDesign.accent, alpha = 0.28f)"
     ));
@@ -83,7 +86,7 @@ fn generates_compose_and_dev_display_overlay_components() {
             .content
             .contains("DoweChip(text = \"Filter\", size = \"sm\"")
     );
-    assert!(views.content.contains("private fun DoweChip(text: String, size: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier, compact: Boolean"));
+    assert!(views.content.contains("private fun DoweChip(text: String, size: String, height: Dp, horizontalPadding: Dp, textSize: TextUnit, contentGap: Dp, closeAlpha: Float, backgroundColor: Color"));
     assert!(
         views
             .content

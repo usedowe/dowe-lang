@@ -41,7 +41,7 @@ private fun DoweAvatar(source: String?, name: String?, alt: String, size: String
                     .height(indicatorSize)
                     .clip(shape)
                     .background(doweAvatarStatusColor(status))
-                    .border(1.dp, DoweDesign.background, shape)
+                    .border(3.dp, DoweDesign.background, shape)
             )
         }
     }
@@ -329,6 +329,7 @@ private fun DoweChatBox(state: DoweReactiveState, messagesPath: String, mode: St
                                                 .clip(RoundedCornerShape(9.dp))
                                                 .background(if (selected) contentColor else Color.Transparent)
                                                 .border(1.dp, if (selected) contentColor else contentColor.copy(alpha = 0.28f), RoundedCornerShape(9.dp))
+                                                .alpha(if (sending || selectedOption != null || submittedChoiceMessages.contains(message.id)) 0.5f else 1f)
                                                 .clickable {
                                                     val key = "${message.id}:${question.id}:$option"
                                                     if (!sending && selectedOption == null) {

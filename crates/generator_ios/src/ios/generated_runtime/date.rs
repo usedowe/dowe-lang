@@ -81,11 +81,13 @@ private struct DoweDateCalendar: View {
             HStack {
                 Button("‹", action: onPrevious)
                     .disabled(!showPrevious)
+                    .opacity(showPrevious ? 1 : 0.35)
                 Spacer()
                 Text(doweDateMonthLabel(month)).fontWeight(.semibold)
                 Spacer()
                 Button("›", action: onNext)
                     .disabled(!showNext)
+                    .opacity(showNext ? 1 : 0.35)
             }
             .font(.title3)
             .foregroundStyle(contentColor)

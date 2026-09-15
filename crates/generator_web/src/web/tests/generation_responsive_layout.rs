@@ -25,13 +25,11 @@ fn renders_responsive_section_centering_on_the_body() {
 
     let html = render_page_body(&ViewNode::Children, &page_tree);
     assert!(html.contains(
-        "<div class=\"section-body section-center-x-false md:section-center-x-true px-4 md:px-6 py-10 md:py-16\">"
+        "<div class=\"section-body section-center-x-false md:section-center-x-true p-4 lg:p-5\">"
     ));
     let design_css = super::design_css();
-    assert!(
-        design_css
-            .contains(".section-body{display:flex;flex-direction:column;align-items:flex-start;}")
-    );
+    assert!(design_css
+        .contains(".section-body{display:flex;flex-direction:column;align-items:flex-start;}"));
     assert!(design_css.contains(".section-body.section-center-x-true{align-items:center;}"));
     assert!(design_css.contains(
         "@media (min-width:768px){.md\\:section-center-x-true{align-items:center;}.md\\:section-center-x-false{align-items:flex-start;}.md\\:section-center-y-true{justify-content:center;}.md\\:section-center-y-false{justify-content:flex-start;}}"
@@ -64,7 +62,7 @@ fn renders_responsive_section_gap_on_the_body() {
     );
 
     let html = render_page_body(&ViewNode::Children, &page_tree);
-    assert!(html.contains("section-body gap-2 md:gap-4 px-4 md:px-6 py-10 md:py-16"));
+    assert!(html.contains("section-body gap-2 md:gap-4 p-4 lg:p-5"));
     assert!(page.css_content.contains(".gap-2{gap:0.5rem;}"));
     assert!(page.css_content.contains(".md\\:gap-4{gap:1rem;}"));
 }
@@ -117,7 +115,7 @@ fn preserves_default_section_horizontal_padding_with_vertical_override() {
     let html = render_page_body(&ViewNode::Children, &page_tree);
 
     assert!(html.contains(
-        "<section class=\"section\"><div class=\"section-body px-4 md:px-6 py-6 md:py-10\">"
+        "<section class=\"section\"><div class=\"section-body px-4 lg:px-5 py-6 md:py-10\">"
     ));
 }
 
@@ -204,4 +202,3 @@ fn emits_interactive_motion_classes_rules_and_chip_event() {
     assert!(chunk.css_content.contains("--dowe-scale:1.05"));
     assert!(chunk.css_content.contains("--dowe-translate-x:-0.75rem"));
 }
-

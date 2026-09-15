@@ -133,6 +133,30 @@ fn generates_desktop_app_metadata() {
     assert!(manifest.content.contains(r#""title":"Clinic Desk""#));
 }
 
+#[test]
+fn desktop_window_geometry_is_shared_by_manifest_and_macos_runtime() {
+    let output = generate_desktop(&[route()]);
+    let macos = output
+        .files
+        .iter()
+        .find(|file| file.relative_path == Path::new("apps/desktop/macos/DoweMacOSApp.swift"))
+        .expect("macos app");
+    let manifest = output
+        .files
+        .iter()
+        .find(|file| file.relative_path == Path::new("apps/desktop/macos/dowe-desktop.json"))
+        .expect("manifest");
+
+    assert!(macos.content.contains(
+        "WKWebView(frame: NSRect(x: 0, y: 0, width: 1024, height: 768), configuration: configuration)"
+    ));
+    assert!(macos.content.contains(
+        "contentRect: NSRect(x: 0, y: 0, width: 1024, height: 768),"
+    ));
+    assert!(manifest.content.contains(r#""window":{"title":"Dowe Dev","width":1024,"height":768}"#));
+    assert!(!macos.content.contains("__DOWE_WINDOW_"));
+}
+
 fn route() -> ViewRoute {
     ViewRoute {
         id: "index".to_string(),

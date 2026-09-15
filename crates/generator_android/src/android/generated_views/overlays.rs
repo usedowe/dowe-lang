@@ -66,7 +66,7 @@ private fun DoweModal(open: Boolean, close: () -> Unit, backgroundColor: Color, 
 }
 
 @Composable
-private fun DoweAlertDialog(open: Boolean, close: () -> Unit, title: String, description: String, confirmText: String, cancelText: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, confirmBackgroundColor: Color, confirmContentColor: Color, radius: Dp, loading: Boolean, onConfirm: (() -> Unit)?) {
+private fun DoweAlertDialog(open: Boolean, close: () -> Unit, title: String, description: String, confirmText: String, cancelText: String, panelPadding: Dp, contentGap: Dp, titleSize: TextUnit, descriptionSize: TextUnit, buttonGap: Dp, backgroundColor: Color, contentColor: Color, borderColor: Color?, confirmBackgroundColor: Color, confirmContentColor: Color, radius: Dp, loading: Boolean, onConfirm: (() -> Unit)?) {
     DoweModal(
         open = open,
         close = close,
@@ -76,13 +76,13 @@ private fun DoweAlertDialog(open: Boolean, close: () -> Unit, title: String, des
         radius = radius,
         disableOverlayClose = true,
         hideCloseButton = true,
-        header = { Text(text = title, color = contentColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold) },
+        header = { Text(text = title, color = contentColor, fontSize = titleSize, fontWeight = FontWeight.SemiBold) },
         footer = {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(buttonGap, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                 Button(
                     enabled = !loading,
                     onClick = close,
-                    modifier = Modifier.defaultMinSize(minWidth = 0.dp, minHeight = doweButtonMinHeight("md")),
+                    modifier = Modifier.defaultMinSize(minWidth = 0.dp, minHeight = doweButtonMinHeight("md")).alpha(if (loading) 0.5f else 1f),
                     shape = RoundedCornerShape(DoweDesign.radius),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = DoweDesign.muted),
                     border = BorderStroke(1.dp, DoweDesign.muted),
@@ -91,7 +91,7 @@ private fun DoweAlertDialog(open: Boolean, close: () -> Unit, title: String, des
                 Button(
                     enabled = !loading,
                     onClick = { onConfirm?.invoke() },
-                    modifier = Modifier.defaultMinSize(minWidth = 0.dp, minHeight = doweButtonMinHeight("md")),
+                    modifier = Modifier.defaultMinSize(minWidth = 0.dp, minHeight = doweButtonMinHeight("md")).alpha(if (loading) 0.5f else 1f),
                     shape = RoundedCornerShape(DoweDesign.radius),
                     colors = ButtonDefaults.buttonColors(containerColor = confirmBackgroundColor, contentColor = confirmContentColor),
                     contentPadding = PaddingValues(horizontal = doweButtonHorizontalPadding("md"), vertical = doweButtonVerticalPadding("md"))
@@ -99,7 +99,7 @@ private fun DoweAlertDialog(open: Boolean, close: () -> Unit, title: String, des
             }
         }
     ) {
-        Text(text = description, color = contentColor.copy(alpha = 0.72f), fontSize = 14.sp)
+        Text(text = description, color = contentColor.copy(alpha = 0.72f), fontSize = descriptionSize)
     }
 }
 
@@ -239,6 +239,7 @@ private fun DoweOverlayItem(label: String, description: String?, disabled: Boole
             .clip(RoundedCornerShape(DoweDesign.radius))
             .background(backgroundColor.copy(alpha = if (onClick == null) 0f else 0.08f))
             .then(if (onClick == null || disabled) Modifier else Modifier.clickable(onClick = onClick))
+            .alpha(if (disabled) 0.5f else 1f)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -246,7 +247,7 @@ private fun DoweOverlayItem(label: String, description: String?, disabled: Boole
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             icon()
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = label, color = contentColor.copy(alpha = if (disabled) 0.48f else 1f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(text = label, color = contentColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 if (description != null) {
                     Text(text = description, color = contentColor.copy(alpha = 0.68f), fontSize = 12.sp)
                 }

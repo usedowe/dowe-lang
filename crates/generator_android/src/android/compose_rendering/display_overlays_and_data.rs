@@ -68,11 +68,15 @@ fn render_compose_badge(
 ) {
     let pad = " ".repeat(indent);
     output.push_str(&format!(
-        "{pad}DoweBadge(text = {}, position = {}, backgroundColor = {}, contentColor = {}, modifier = {}) {{\n",
+        "{pad}DoweBadge(text = {}, position = {}, backgroundColor = {}, contentColor = {}, fontSize = {}.sp, height = {}.dp, horizontalPadding = {}.dp, verticalPadding = {}.dp, modifier = {}) {{\n",
         compose_string_literal(&props.text),
         compose_string_literal(props.position.as_str()),
         variant_container(&props.style),
         variant_content(&props.style),
+        dowe_components::BadgeVisualContract::standard().font_size,
+        dowe_components::BadgeVisualContract::standard().height,
+        dowe_components::BadgeVisualContract::standard().horizontal_padding,
+        dowe_components::BadgeVisualContract::standard().vertical_padding,
         modifier_for_style(&props.style.style)
     ));
     for child in children {
@@ -100,6 +104,7 @@ fn render_compose_chip(
 ) {
     let pad = " ".repeat(indent);
     let size = props.style.size.unwrap_or(ButtonSize::Md);
+    let visual = ChipVisualContract::for_size(size);
     let mut modifier = modifier_for_style(&props.style.style);
     if props.style.element.on_click.is_some() {
         modifier.push_str(&format!(
@@ -110,9 +115,14 @@ fn render_compose_chip(
     let compact =
         props.style.style.sizing.w.is_none() && props.style.style.sizing.w_binding.is_none();
     output.push_str(&format!(
-        "{pad}DoweChip(text = {}, size = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, modifier = {}, compact = {}, onClose = {}, start = ",
+        "{pad}DoweChip(text = {}, size = {}, height = {}.dp, horizontalPadding = {}.dp, textSize = {}.sp, contentGap = {}.dp, closeAlpha = {}f, backgroundColor = {}, contentColor = {}, borderColor = {}, modifier = {}, compact = {}, onClose = {}, start = ",
         compose_string_literal(value),
         compose_string_literal(size.as_str()),
+        visual.height,
+        visual.horizontal_padding,
+        visual.text_size,
+        visual.content_gap,
+        visual.close_alpha,
         variant_container(&props.style),
         variant_content(&props.style),
         compose_variant_border(&props.style),
@@ -133,10 +143,15 @@ fn render_compose_skeleton(
     flow: ComposeFlow,
 ) {
     let pad = " ".repeat(indent);
+    let visual = dowe_components::SkeletonVisualContract::standard();
     output.push_str(&format!(
-        "{pad}DoweSkeleton(variant = {}, animation = {}, modifier = {})\n",
+        "{pad}DoweSkeleton(variant = {}, animation = {}, textHeight = {}.dp, defaultRadius = {}.dp, pulseAlpha = {}f, pulseDurationMs = {}, modifier = {})\n",
         compose_string_literal(props.variant.as_str()),
         compose_string_literal(props.animation.as_str()),
+        visual.text_height,
+        visual.default_radius,
+        visual.pulse_alpha,
+        visual.pulse_duration_ms,
         modifier_for_container_style(&props.style, flow)
     ));
 }

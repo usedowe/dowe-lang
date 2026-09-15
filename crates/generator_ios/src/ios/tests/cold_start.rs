@@ -147,8 +147,10 @@ fn swiftui_static_icons_do_not_generate_a_dynamic_catalog() {
 fn swiftui_runtime_fragment_boundaries_do_not_repeat_members() {
     let mut side_nav = side_nav_route();
     side_nav.route_path = "/side-nav".to_string();
+    let mut media = media_display_form_route();
+    media.route_path = "/geometry-media".to_string();
     let output = generate_ios(
-        &[bar_route(), side_nav],
+        &[bar_route(), side_nav, media],
         &FontConfig::default(),
         &DesignConfig::default(),
         &[],
@@ -183,8 +185,10 @@ fn swiftui_cold_start_typechecks_with_simulator_sdk() {
     }
     let mut side_nav = side_nav_route();
     side_nav.route_path = "/side-nav".to_string();
+    let mut media = media_display_form_route();
+    media.route_path = "/geometry-media".to_string();
     let output = generate_ios(
-        &[bar_route(), side_nav],
+        &[bar_route(), side_nav, media],
         &FontConfig::default(),
         &DesignConfig::default(),
         &[],

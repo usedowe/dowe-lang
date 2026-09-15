@@ -8,6 +8,7 @@ include!("swift_rendering/navigation_shell_nodes.rs");
 include!("swift_rendering/overlay_nodes.rs");
 include!("swift_rendering/drawer_rich_nodes.rs");
 include!("swift_rendering/badge_media_nodes.rs");
+include!("swift_rendering/carousel_node.rs");
 include!("swift_rendering/form_action_nodes.rs");
 include!("swift_rendering/form_field_nodes.rs");
 include!("swift_rendering/overlay_helpers.rs");

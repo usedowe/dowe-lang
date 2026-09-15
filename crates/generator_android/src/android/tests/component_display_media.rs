@@ -291,49 +291,42 @@ fn generates_compose_and_dev_media_display_form_components() {
             .contains("item.arrow.animate().rotation(open ? 90f : 0f)")
     );
     assert!(views.content.contains("DoweCarousel("));
+    assert!(views.content.contains("snap = true"));
     assert!(views.content.contains("contentDescription = \"${title ?: \"Carousel\"}, slide"));
     assert!(views.content.contains("variant = \"snapping\""));
     assert!(views.content.contains("DoweCarouselSlideSpec(id ="));
     assert!(views.content.contains("LazyRow("));
     assert!(views.content.contains("rememberSnapFlingBehavior"));
     assert!(views.content.contains("if (showNavigation)"));
-    assert!(
-        views
-            .content
-            .contains("enabled = !disableLoop || currentIndex > 0")
-    );
+    assert!(views.content.contains("DoweIconButton(enabled = !disableLoop || currentIndex > 0, dimension = control.navigationSize"));
     assert!(views.content.contains("orientation = orientation"));
     assert!(views.content.contains("phase = slidePhase(index)"));
+    assert!(views.content.contains("DowePaginationIndicator(active = index == currentIndex"));
+    assert!(views.content.contains(".clip(RoundedCornerShape(999.dp))"));
+    assert!(views.content.contains("control = DoweCarouselControlContract("));
+    assert!(views.content.contains("control.indicatorActiveWidth"));
+    assert!(views.content.contains("dotActiveScalePercent / 100f"));
     assert!(views.content.contains("rotationY = phase * 24f"));
     assert!(views.content.contains("ButtonDefaults.buttonColors"));
     assert!(
         views
             .content
-            .contains("TextButton(modifier = Modifier.size(36.dp)")
+            .contains("TextButton(modifier = Modifier.heightIn(min = 28.dp)")
     );
     assert!(
         views
             .content
-            .contains("ButtonDefaults.textButtonColors(contentColor = accentColor)")
+            .contains("ButtonDefaults.textButtonColors(contentColor = if (index == currentIndex)")
     );
     assert!(dev.content.contains("android.widget.HorizontalScrollView"));
     assert!(
         dev.content
             .contains("setBackgroundColor(Color.TRANSPARENT)")
     );
-    assert!(dev.content.contains("setMinimumHeight(doweDp(32))"));
-    assert!(
-        dev.content
-            .contains("setContentDescription(\"Previous slide\")")
-    );
-    assert!(dev.content.contains(
-        "setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, doweNativeTextSize(22f));"
-    ));
-    assert!(
-        dev.content
-            .contains("setContentDescription(\"Next slide\")")
-    );
-    assert!(dev.content.contains("ArrayList<Button>"));
+    assert!(dev.content.contains("doweIconButton("));
+    assert!(dev.content.contains("\"Previous slide\""));
+    assert!(dev.content.contains("\"Next slide\""));
+    assert!(dev.content.contains("ArrayList<View>"));
     assert!(dev.content.contains("setOnScrollChangeListener"));
     assert!(dev.content.contains("postDelayed"));
     assert!(dev.content.contains("nearestDistance"));
@@ -345,10 +338,6 @@ fn generates_compose_and_dev_media_display_form_components() {
     assert!(
         dev.content
             .contains("final int selectedIndex = targetIndex")
-    );
-    assert!(
-        dev.content
-            .contains("final int selectedNextIndex = targetIndex")
     );
     assert!(dev.content.contains("smoothScrollTo(slide.getLeft(), 0)"));
     assert!(
@@ -390,9 +379,12 @@ fn generates_compose_and_dev_media_display_form_components() {
     assert!(dev.content.contains("setOnTouchListener"));
     assert!(views.content.contains("rotationY"));
     assert!(views.content.contains("rememberUpdatedState(currentIndex)"));
+    assert!(views.content.contains("DoweCarouselGeometry(contentGap = 12, viewportPadding = 0, verticalViewportHeight = 448"));
+    assert!(views.content.contains("height(geometry.verticalViewportHeight.dp)"));
+    assert!(dev.content.contains("addOnLayoutChangeListener((changed, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom)"));
     assert!(views.content.contains("if (!listState.isScrollInProgress && !(disableLoop && autoplayIndex.value >= slideCount - 1)) moveTo(autoplayIndex.value + 1)"));
     assert!(views.content.contains("slides.forEachIndexed { index, slide ->"));
-    assert!(views.content.contains("variant == \"stories\" -> minOf(384.dp, viewportWidth * 0.82f)"));
+    assert!(views.content.contains("geometry.slideMaxWidth != null -> minOf(geometry.slideMaxWidth.dp, viewportWidth * (geometry.slideFractionPercent / 100f))"));
     for variant in [
         "coverFlow",
         "stories",
@@ -400,7 +392,6 @@ fn generates_compose_and_dev_media_display_form_components() {
         "cardStack",
         "flipbook",
         "slideshow",
-        "masonry",
         "rtl",
         "controls",
         "dots",
@@ -447,6 +438,8 @@ fn generates_compose_and_dev_media_display_form_components() {
     );
     assert!(views.content.contains("DoweDateCalendar("));
     assert!(views.content.contains("DoweAnchoredPopover("));
+    assert!(views.content.contains("minWidth = 286.dp, maxWidth = 340.dp, maxHeight = 420.dp"));
+    assert!(views.content.contains("minWidth = 600.dp, maxWidth = 720.dp, maxHeight = 460.dp"));
     assert!(views.content.contains("DoweRadioGroup("));
     assert!(views.content.contains("DoweToggle("));
     assert!(views.content.contains("RoundedCornerShape(4.dp)"));

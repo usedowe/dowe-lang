@@ -64,7 +64,9 @@ private fun DoweTreeNodeView(node: DoweTreeNode, depth: Int, selected: String, d
             verticalAlignment = Alignment.CenterVertically
         ) {
             repeat(depth) {
-                Box(modifier = Modifier.width(16.dp).height(28.dp))
+                Box(modifier = Modifier.width(16.dp).height(28.dp).drawBehind {
+                    drawLine(contentColor.copy(alpha = 0.16f), Offset(size.width - 0.5.dp.toPx(), 0f), Offset(size.width - 0.5.dp.toPx(), size.height), strokeWidth = 1.dp.toPx())
+                })
             }
             Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
                 if (node.branch) {

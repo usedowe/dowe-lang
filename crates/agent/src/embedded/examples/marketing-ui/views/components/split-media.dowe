@@ -1,0 +1,22 @@
+component SplitMedia
+  Section id:"ecosystem" boxed:true
+    Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:14 } align:"center"
+      Flex direction:"column" align:"start" gap:4 maxW:"xl"
+        Text spacing:"widest"
+          "ECOSISTEMA"
+        Title size:"5xl"
+          "Más que una moneda. Un ecosistema."
+        Text
+          "Conecta desarrollo, cloud, marketplace, pagos y servicios en un mismo entorno."
+        Button href:"#growth" variant:"ghost" scheme:"secondary"
+          "Explorar el ecosistema"
+      Card variant:"outlined" scheme:"muted" p:{ xs:4 md:6 } minH:{ xs:80 md:96 }
+        Flex direction:"column" align:"center" justify:"center" gap:4 minH:{ xs:64 md:80 }
+          Svg viewBox:"0 0 520 360" w:"full" h:"full"
+            Path d:"M92 76H428V286H92Z" fill:"primary"
+            Path d:"M118 102H402V260H118Z" fill:"surface"
+            Path d:"M198 286H322L344 314H176Z" fill:"primary"
+            Path d:"M188 184L248 124L286 162L334 114L376 156L376 232H188Z" fill:"secondary"
+            Path d:"M188 232L236 190L270 216L306 180L376 232Z" fill:"accent"
+          Text size:"sm" spacing:"widest"
+            "PRODUCT · CLOUD · COMMUNITY"

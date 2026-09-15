@@ -4,13 +4,21 @@ fn swift_runtime_badge_chip_skeleton() -> &'static str {
     let position: String
     let backgroundColor: Color
     let contentColor: Color
+    let fontSize: CGFloat
+    let height: CGFloat
+    let horizontalPadding: CGFloat
+    let verticalPadding: CGFloat
     let content: Content
 
-    init(text: String, position: String, backgroundColor: Color, contentColor: Color, @ViewBuilder content: () -> Content) {
+    init(text: String, position: String, backgroundColor: Color, contentColor: Color, fontSize: CGFloat, height: CGFloat, horizontalPadding: CGFloat, verticalPadding: CGFloat, @ViewBuilder content: () -> Content) {
         self.text = text
         self.position = position
         self.backgroundColor = backgroundColor
         self.contentColor = contentColor
+        self.fontSize = fontSize
+        self.height = height
+        self.horizontalPadding = horizontalPadding
+        self.verticalPadding = verticalPadding
         self.content = content()
     }
 
@@ -18,9 +26,10 @@ fn swift_runtime_badge_chip_skeleton() -> &'static str {
         content
             .overlay(alignment: alignment) {
             Text(text)
-                .font(.caption2.weight(.semibold))
-                .padding(.horizontal, CGFloat(6))
-                .padding(.vertical, CGFloat(2))
+                .font(.system(size: fontSize, weight: .semibold))
+                .padding(.horizontal, horizontalPadding)
+                .padding(.vertical, verticalPadding)
+                .frame(height: height)
                 .background(backgroundColor)
                 .foregroundStyle(contentColor)
                 .clipShape(Capsule())
@@ -52,6 +61,11 @@ fn swift_runtime_badge_chip_skeleton() -> &'static str {
 struct DoweChip<Start: View, End: View>: View {
     let text: String
     let size: String
+    let height: CGFloat
+    let horizontalPadding: CGFloat
+    let textSize: CGFloat
+    let contentGap: CGFloat
+    let closeAlpha: CGFloat
     let backgroundColor: Color
     let contentColor: Color
     let borderColor: Color?
@@ -64,9 +78,14 @@ struct DoweChip<Start: View, End: View>: View {
     let start: Start
     let end: End
 
-    init(text: String, size: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, borderWidth: CGFloat, radius: CGFloat, shadow: DoweShadowSpec?, action: (() -> Void)?, hasStart: Bool, hasEnd: Bool, @ViewBuilder start: () -> Start, @ViewBuilder end: () -> End) {
+    init(text: String, size: String, height: CGFloat, horizontalPadding: CGFloat, textSize: CGFloat, contentGap: CGFloat, closeAlpha: CGFloat, backgroundColor: Color, contentColor: Color, borderColor: Color?, borderWidth: CGFloat, radius: CGFloat, shadow: DoweShadowSpec?, action: (() -> Void)?, hasStart: Bool, hasEnd: Bool, @ViewBuilder start: () -> Start, @ViewBuilder end: () -> End) {
         self.text = text
         self.size = size
+        self.height = height
+        self.horizontalPadding = horizontalPadding
+        self.textSize = textSize
+        self.contentGap = contentGap
+        self.closeAlpha = closeAlpha
         self.backgroundColor = backgroundColor
         self.contentColor = contentColor
         self.borderColor = borderColor
@@ -81,7 +100,7 @@ struct DoweChip<Start: View, End: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: CGFloat(8)) {
+        HStack(spacing: contentGap) {
             if hasStart { start }
             Text(text)
                 .lineLimit(1)
@@ -90,7 +109,7 @@ struct DoweChip<Start: View, End: View>: View {
                 Button(action: action) {
                     Text("x")
                         .fontWeight(.bold)
-                        .opacity(0.72)
+                        .opacity(closeAlpha)
                 }
                 .buttonStyle(.plain)
             }
@@ -109,49 +128,26 @@ struct DoweChip<Start: View, End: View>: View {
         }
     }
 
-    private var height: CGFloat {
-        switch size {
-        case "xs": return CGFloat(20)
-        case "sm": return CGFloat(24)
-        case "lg": return CGFloat(40)
-        case "xl": return CGFloat(48)
-        default: return CGFloat(32)
-        }
-    }
-
-    private var horizontalPadding: CGFloat {
-        switch size {
-        case "xs", "sm": return CGFloat(12)
-        case "lg": return CGFloat(20)
-        case "xl": return CGFloat(24)
-        default: return CGFloat(16)
-        }
-    }
-
-    private var textSize: CGFloat {
-        switch size {
-        case "xs", "sm": return CGFloat(12)
-        case "lg": return CGFloat(18)
-        case "xl": return CGFloat(24)
-        default: return CGFloat(14)
-        }
-    }
 }
 
 struct DoweSkeleton: View {
     let variant: String
     let animation: String
+    let textHeight: CGFloat
+    let defaultRadius: CGFloat
+    let pulseAlpha: CGFloat
+    let pulseDurationMs: Double
     @State private var active = false
 
     var body: some View {
         Rectangle()
             .fill(DoweDesign.muted)
-            .opacity(animation == "pulse" && active ? 0.45 : 1)
-            .frame(height: variant == "text" ? CGFloat(16) : nil)
+            .opacity(animation == "pulse" && active ? pulseAlpha : 1)
+            .frame(height: variant == "text" ? textHeight : nil)
             .clipShape(shape)
             .onAppear {
                 guard animation != "none" else { return }
-                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                withAnimation(.easeInOut(duration: pulseDurationMs / 1000).repeatForever(autoreverses: true)) {
                     active = true
                 }
             }
@@ -162,7 +158,7 @@ struct DoweSkeleton: View {
         case "circular": return AnyShape(Circle())
         case "rectangular": return AnyShape(Rectangle())
         case "rounded": return AnyShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
-        default: return AnyShape(RoundedRectangle(cornerRadius: CGFloat(6)))
+        default: return AnyShape(RoundedRectangle(cornerRadius: defaultRadius))
         }
     }
 }

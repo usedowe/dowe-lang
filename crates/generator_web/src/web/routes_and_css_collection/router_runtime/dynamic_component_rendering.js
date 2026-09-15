@@ -26,27 +26,45 @@ function renderToggleGroups(root, state, scope) {
     const selected = value == null ? null : String(value);
     if (group.dataset.dowePagination !== undefined) {
       const pages = paginationPages(group, state, scope),
-        current = Math.min(pages, Math.max(1, Number(selected || "1") || 1));
-      for (const item of group.querySelectorAll(
-        "[data-dowe-toggle-group-item]"
-      )) {
-        const page = Number(item.dataset.doweToggleGroupItem),
-          active = page === current,
-          visible =
-            page <= pages &&
-            (pages <= 7 ||
-              page === 1 ||
-              page === pages ||
-              Math.abs(page - current) <= 1);
-        item.classList.toggle("is-active", active);
-        item.toggleAttribute("hidden", !visible);
-        if (active) item.setAttribute("aria-current", "page");
-        else item.removeAttribute("aria-current");
+        current = Math.min(pages, Math.max(1, Number(selected || "1") || 1)),
+        paginationVariant = group.dataset.dowePaginationVariant || "pages";
+      if (paginationVariant === "pages") {
+        for (const item of group.querySelectorAll(
+          "[data-dowe-toggle-group-item]"
+        )) {
+          const page = Number(item.dataset.doweToggleGroupItem),
+            active = page === current,
+            visible =
+              page <= pages &&
+              (pages <= 7 ||
+                page === 1 ||
+                page === pages ||
+                Math.abs(page - current) <= 1);
+          item.classList.toggle("is-active", active);
+          item.toggleAttribute("hidden", !visible);
+          if (active) item.setAttribute("aria-current", "page");
+          else item.removeAttribute("aria-current");
+        }
+        const start = group.querySelector(".pagination-ellipsis-start"),
+          end = group.querySelector(".pagination-ellipsis-end");
+        if (start) start.hidden = pages <= 7 || current <= 3;
+        if (end) end.hidden = pages <= 7 || current >= pages - 2;
+      } else {
+        for (const indicator of group.querySelectorAll(
+          "[data-dowe-pagination-indicator]"
+        )) {
+          const page = Number(indicator.dataset.dowePaginationIndicator),
+            active = page === current;
+          indicator.classList.toggle("is-active", active);
+          indicator.toggleAttribute("hidden", page > pages);
+          indicator.disabled =
+            group.classList.contains("is-disabled") || page > pages;
+          if (active) indicator.setAttribute("aria-current", "page");
+          else indicator.removeAttribute("aria-current");
+        }
       }
-      const start = group.querySelector(".pagination-ellipsis-start"),
-        end = group.querySelector(".pagination-ellipsis-end");
-      if (start) start.hidden = pages <= 7 || current <= 3;
-      if (end) end.hidden = pages <= 7 || current >= pages - 2;
+      const counter = group.querySelector("[data-dowe-pagination-counter]");
+      if (counter) counter.textContent = `${current} / ${pages}`;
       for (const button of group.querySelectorAll(
         "[data-dowe-pagination-step]"
       )) {

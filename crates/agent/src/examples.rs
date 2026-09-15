@@ -233,5 +233,101 @@ fn example_records() -> &'static [ExampleRecord] {
                 "/src/embedded/examples/reference-ui/views/components/site-navigation.dowe"
             )),
         },
+        ExampleRecord {
+            id: "marketing-editorial-hero",
+            title: "Editorial split hero",
+            description: "A bounded promise, focal product stage, actions, and reference-aligned hero geometry.",
+            source_path: "dowe-agent://examples/marketing-ui/views/components/editorial-hero.dowe",
+            skill: "views",
+            tags: &["hero", "landing", "marketing", "focal-media", "right-media"],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/embedded/examples/marketing-ui/views/components/editorial-hero.dowe"
+            )),
+        },
+        ExampleRecord {
+            id: "marketing-proof-metrics",
+            title: "Compact proof metrics",
+            description: "A compact metrics group aligned to a marketing content rail.",
+            source_path: "dowe-agent://examples/marketing-ui/views/components/proof-metrics.dowe",
+            skill: "views",
+            tags: &["metrics", "proof", "stats", "marketing", "compact"],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/embedded/examples/marketing-ui/views/components/proof-metrics.dowe"
+            )),
+        },
+        ExampleRecord {
+            id: "marketing-split-media",
+            title: "Split media section",
+            description: "A responsive ecosystem or feature band with copy beside a focal visual payload.",
+            source_path: "dowe-agent://examples/marketing-ui/views/components/split-media.dowe",
+            skill: "views",
+            tags: &["split-media", "ecosystem", "feature", "image", "marketing"],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/embedded/examples/marketing-ui/views/components/split-media.dowe"
+            )),
+        },
+        ExampleRecord {
+            id: "marketing-opportunity-band",
+            title: "Dark opportunity band",
+            description: "A high-contrast launch band with a primary invitation and a supporting scene.",
+            source_path: "dowe-agent://examples/marketing-ui/views/components/opportunity-band.dowe",
+            skill: "views",
+            tags: &["opportunity", "genesis", "launch", "dark", "cta"],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/embedded/examples/marketing-ui/views/components/opportunity-band.dowe"
+            )),
+        },
+        ExampleRecord {
+            id: "marketing-growth-ladder",
+            title: "Growth ladder",
+            description: "A utility and adoption story with a compact portable progression diagram.",
+            source_path: "dowe-agent://examples/marketing-ui/views/components/growth-ladder.dowe",
+            skill: "views",
+            tags: &["growth", "utility", "adoption", "progress", "chart"],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/embedded/examples/marketing-ui/views/components/growth-ladder.dowe"
+            )),
+        },
+        ExampleRecord {
+            id: "marketing-media-cta",
+            title: "Media CTA panel",
+            description: "A closing call to action with paired actions and a supporting vector scene.",
+            source_path: "dowe-agent://examples/marketing-ui/views/components/media-cta.dowe",
+            skill: "views",
+            tags: &["cta", "white-paper", "closing-panel", "media", "marketing"],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/embedded/examples/marketing-ui/views/components/media-cta.dowe"
+            )),
+        },
+        ExampleRecord {
+            id: "marketing-faq-editorial",
+            title: "Editorial FAQ",
+            description: "A quiet question band that delegates disclosure behavior to Accordion.",
+            source_path: "dowe-agent://examples/marketing-ui/views/components/faq-editorial.dowe",
+            skill: "views",
+            tags: &["faq", "questions", "accordion", "disclosure", "marketing"],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/embedded/examples/marketing-ui/views/components/faq-editorial.dowe"
+            )),
+        },
+        ExampleRecord {
+            id: "marketing-contact-panel",
+            title: "Contact information panel",
+            description: "A contact band with a clear invitation and a compact channel list.",
+            source_path: "dowe-agent://examples/marketing-ui/views/components/contact-panel.dowe",
+            skill: "views",
+            tags: &["contact", "channels", "community", "marketing", "panel"],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/embedded/examples/marketing-ui/views/components/contact-panel.dowe"
+            )),
+        },
     ]
 }

@@ -4,7 +4,7 @@ private fun DoweCheckbox(checked: Boolean, onCheckedChange: (Boolean) -> Unit, e
     var touched by remember { mutableStateOf(false) }
     val validationError = errorText ?: if (touched) doweBooleanValidationError(checked, validationRules) else null
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-    Row(modifier = Modifier.clickable(enabled = enabled) { touched = true; onCheckedChange(!checked) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier = Modifier.alpha(if (enabled) 1f else 0.5f).clickable(enabled = enabled) { touched = true; onCheckedChange(!checked) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
             modifier = Modifier
                 .width(20.dp)

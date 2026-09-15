@@ -25,6 +25,7 @@ fn swift_runtime_toggle() -> &'static str {
             }
         }
         .foregroundStyle(accentColor)
+        .opacity(enabled ? 1 : 0.5)
     }
 }
 

@@ -63,6 +63,10 @@
 .select-control.is-open .select-arrow {
   transform:rotate(180deg);
 }
+.select-control:disabled {
+  opacity:var(--dowe-selection-disabled-opacity);
+  cursor:not-allowed;
+}
 .select-popover {
   position:fixed;
   z-index:9999;
@@ -101,7 +105,9 @@
   width:100%;
   border:0;
   border-radius:calc(var(--dowe-radius) * 0.75);
-  padding:0.5rem 0.625rem;
+  min-height:var(--dowe-menu-option-height);
+  gap:var(--dowe-menu-gap);
+  padding:0 var(--dowe-menu-option-padding);
   background:transparent;
   color:inherit;
   text-align:left;

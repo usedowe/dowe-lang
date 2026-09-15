@@ -136,7 +136,7 @@ fn generates_android_table_for_compose_and_dev_runtime() {
         .contains("DoweDesign.surfaceText.copy(alpha = 0.28f)"));
     assert!(views.content.contains("state.rows(dataPath)"));
     assert!(views.content.contains(
-        "columns.fold(0.dp) { total, column -> total + doweTableColumnWidth(column.width) }"
+        "columns.fold(0.dp) { total, column -> total + doweTableColumnWidth(column.width) + metrics.horizontalPadding * 2 }"
     ));
     assert!(views
         .content
@@ -145,12 +145,8 @@ fn generates_android_table_for_compose_and_dev_runtime() {
         "val columnExpansion = (tableWidth - minimumWidth) / columns.size.coerceAtLeast(1).toFloat()"
     ));
     assert!(views.content.contains(
-        "Modifier.width(doweTableColumnWidth(column.width) + columnExpansion)"
+        "Modifier.width(doweTableColumnWidth(column.width) + metrics.horizontalPadding * 2 + columnExpansion)"
     ));
-    assert!(!views.content.contains(
-        "doweTableColumnWidth(column.width) + metrics.horizontalPadding * 2"
-    ));
-
     let dev = dev_java_source(&output);
     assert!(dev.content.contains("private LinearLayout doweTable("));
     assert!(dev
@@ -181,15 +177,12 @@ fn generates_android_table_for_compose_and_dev_runtime() {
         "new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)"
     ));
     assert!(dev.content.contains(
-        "new LinearLayout.LayoutParams(doweTableColumnWidth(width) - (reserveSeparator ? doweDp(1) : 0), ViewGroup.LayoutParams.WRAP_CONTENT, 1f)"
+        "new LinearLayout.LayoutParams(doweTableColumnWidth(width) + doweDp(horizontal * 2) - (reserveSeparator ? doweDp(1) : 0), ViewGroup.LayoutParams.WRAP_CONTENT, 1f)"
     ));
     assert!(dev.content.contains("private View doweTableSeparator()"));
     assert!(!dev
         .content
         .contains("cell.setBackground(doweInputBackground"));
-    assert!(dev.content.contains("value += doweTableColumnWidth(width);"));
-    assert!(!dev
-        .content
-        .contains("doweTableColumnWidth(width) + doweDp(horizontal * 2)"));
+    assert!(dev.content.contains("value += doweTableColumnWidth(width) + doweDp(doweTableHorizontalPadding(tableSize) * 2);"));
+    assert!(dev.content.contains("private int doweTableHorizontalPadding(int tableSize)"));
 }
-

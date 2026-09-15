@@ -58,7 +58,8 @@ fn swift_runtime_diagram() -> &'static str {
     private func nodeById(_ id: String) -> [String: Any]? { nodes.first { nodeId($0) == id } }
     private func hitNode(at point: CGPoint) -> [String: Any]? {
         for node in nodes.reversed() {
-            let x = number(node["x"]), y = number(node["y"])
+            let position = effectivePosition(node)
+            let x = position.x, y = position.y
             if point.x >= x && point.x <= x + nodeWidth(node) && point.y >= y && point.y <= y + nodeHeight(node) { return node }
         }
         return nil

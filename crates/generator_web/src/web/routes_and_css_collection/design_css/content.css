@@ -256,10 +256,18 @@
 .table {
   position:relative;
   width:100%;
+  min-width:max-content;
   border-collapse:separate;
   border-spacing:0;
   text-align:start;
   border-radius:var(--dowe-radius);
+}
+.table-head,
+.table-body td {
+  min-width:calc(160px + (2 * var(--dowe-table-cell-padding)));
+}
+.table-head[style*="width:"] {
+  min-width:0;
 }
 .table-header {
   white-space:nowrap;
@@ -269,13 +277,13 @@
   font-weight:600;
 }
 .table-head {
-  padding:0.75rem 1rem;
+  padding:var(--dowe-table-header-padding-y) var(--dowe-table-cell-padding);
   text-align:start;
-  font-size:0.875rem;
+  font-size:var(--dowe-table-text-size);
   font-weight:600;
 }
 .table-head:first-child {
-  padding-left:1.5rem;
+  padding-left:var(--dowe-table-cell-padding);
   border-start-start-radius:var(--dowe-radius);
 }
 .table-head:last-child {
@@ -293,13 +301,13 @@
   transition:background-color 150ms ease;
 }
 .table-body td {
-  padding:1rem;
+  padding:var(--dowe-table-cell-padding);
   text-align:start;
-  font-size:0.875rem;
+  font-size:var(--dowe-table-text-size);
   white-space:nowrap;
 }
 .table-body td:first-child {
-  padding-left:1.5rem;
+  padding-left:var(--dowe-table-cell-padding);
 }
 .table.has-dividers .table-body tr+tr td {
   border-top:1px solid currentColor;
@@ -328,14 +336,14 @@
   font-size:0.75rem;
 }
 .table.is-sm .table-head:first-child {
-  padding-left:1rem;
+  padding-left:0.75rem;
 }
 .table.is-sm .table-body td {
   padding:0.5rem 0.75rem;
   font-size:0.75rem;
 }
 .table.is-sm .table-body td:first-child {
-  padding-left:1rem;
+  padding-left:0.75rem;
 }
 .table.is-md .table-head {
   padding:0.75rem 1rem;
@@ -350,14 +358,14 @@
   font-size:1rem;
 }
 .table.is-lg .table-head:first-child {
-  padding-left:1.75rem;
+  padding-left:1.25rem;
 }
 .table.is-lg .table-body td {
   padding:1.25rem;
   font-size:1rem;
 }
 .table.is-lg .table-body td:first-child {
-  padding-left:1.75rem;
+  padding-left:1.25rem;
 }
 .table-empty-row {
   border:0;
@@ -418,7 +426,7 @@
   justify-content:space-between;
   gap:0.75rem;
   padding:0.625rem 0.75rem;
-  border-bottom:1px solid currentColor;
+  border-bottom:1px solid color-mix(in srgb,currentColor 27%,transparent);
   font-size:0.75rem;
   font-weight:600;
   opacity:0.88;

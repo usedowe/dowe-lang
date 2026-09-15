@@ -391,7 +391,7 @@ fn append_tabs_variant_css(css: &mut String, family: ColorFamily, variant: TabsV
             ".tabs-list.is-pills.is-{name}{{border-radius:9999px;background-color:var(--dowe-{tint});color:var(--dowe-{tint_text});}}.tabs-list.is-pills.is-{name} .tab{{border-radius:9999px;}}.tabs-list.is-pills.is-{name} .tab.on-active{{background-color:var(--dowe-{active_background});color:var(--dowe-{active_content});}}"
         )),
         TabsVariant::Stepper => css.push_str(&format!(
-            ".tabs-list.is-stepper.is-{name}{{gap:0;padding:0;overflow-x:auto;scroll-snap-type:x proximity;}}.tabs-list.is-stepper.is-{name} .tab{{gap:0.625rem;padding:0.5rem 0;scroll-snap-align:start;color:var(--dowe-muted);}}.tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{content:\"\";display:block;width:2rem;height:2px;margin-inline:0.5rem;background:var(--dowe-muted);}}.tabs-list.is-stepper.is-{name} .tab.on-active{{color:var(--dowe-{accent});}}.tabs-list.is-stepper.is-{name} .step-indicator{{display:inline-grid;place-items:center;flex:0 0 auto;width:2rem;height:2rem;border:2px solid var(--dowe-muted);border-radius:9999px;background:var(--dowe-background);color:var(--dowe-muted);font-weight:700;}}.tabs-list.is-stepper.is-{name} .tab.on-active .step-indicator{{border-color:var(--dowe-{accent});background:var(--dowe-{active_background});color:var(--dowe-{active_content});}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab{{width:100%;}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{position:absolute;top:2.5rem;left:0.9375rem;width:2px;height:1.5rem;margin:0;background:var(--dowe-muted);}}"
+            ".tabs-list.is-stepper.is-{name}{{gap:0;padding:0;overflow-x:auto;scroll-snap-type:x proximity;}}.tabs-list.is-stepper.is-{name} .tab{{gap:0.625rem;padding:0.5rem 0;scroll-snap-align:start;color:var(--dowe-muted);}}.tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{content:\"\";display:block;width:var(--dowe-stepper-indicator-size);height:var(--dowe-stepper-connector-thickness);margin-inline:0.5rem;background:var(--dowe-muted);}}.tabs-list.is-stepper.is-{name} .tab.on-active{{color:var(--dowe-{accent});}}.tabs-list.is-stepper.is-{name} .step-indicator{{display:inline-grid;place-items:center;flex:0 0 auto;width:var(--dowe-stepper-indicator-size);height:var(--dowe-stepper-indicator-size);border:var(--dowe-stepper-connector-thickness) solid var(--dowe-muted);border-radius:9999px;background:var(--dowe-background);color:var(--dowe-muted);font-weight:700;}}.tabs-list.is-stepper.is-{name} .tab.on-active .step-indicator{{border-color:var(--dowe-{accent});background:var(--dowe-{active_background});color:var(--dowe-{active_content});}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab{{width:100%;}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{position:absolute;top:2.5rem;left:0.9375rem;width:var(--dowe-stepper-connector-thickness);height:1.5rem;margin:0;background:var(--dowe-muted);}}"
         )),
     }
 }
@@ -417,4 +417,17 @@ fn tabs_accent(family: ColorFamily) -> &'static str {
         ColorFamily::Muted | ColorFamily::Background | ColorFamily::Surface => text_token(family),
         _ => family.as_str(),
     }
+}
+
+fn icon_button_geometry_css() -> String {
+    let mut css = String::new();
+    for size in ButtonSize::all() {
+        let name = size.as_str();
+        let control = scale_rem(size.icon_button_control_size());
+        let icon = scale_rem(size.icon_button_icon_size());
+        css.push_str(&format!(
+            ".icon-button.button-{name}{{width:{control};height:{control};}}.icon-button.button-{name}>[data-dowe-button-icon-start]>.svg{{width:{icon};height:{icon};}}"
+        ));
+    }
+    css
 }

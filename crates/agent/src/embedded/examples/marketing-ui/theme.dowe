@@ -1,0 +1,19 @@
+theme
+  fonts default:"inter" install:["inter"]
+  design defaultTheme:"marketing"
+    Card variant:"solid" scheme:"surface" radius:"lg" shadow:"sm"
+    Button variant:"solid" scheme:"primary" radius:"full" size:"md"
+    Text font:"inter"
+    Title font:"inter"
+    theme name:"marketing"
+      colors:
+        primary color:"#101820" text:"#f8fafc" title:"#ffffff"
+        secondary color:"#2b7a98" text:"#ffffff" title:"#ffffff"
+        accent color:"#89c9d9" text:"#101820" title:"#101820"
+        muted color:"#7a8794" text:"#1e2934" title:"#101820"
+        background color:"#f4f6f7" text:"#26323b" title:"#101820"
+        surface color:"#ffffff" text:"#26323b" title:"#101820"
+        success color:"#6d9d78" text:"#ffffff" title:"#ffffff"
+        info color:"#76abc2" text:"#101820" title:"#101820"
+        warning color:"#d39b59" text:"#101820" title:"#101820"
+        danger color:"#c56f6f" text:"#ffffff" title:"#ffffff"

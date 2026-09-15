@@ -82,7 +82,7 @@ struct DoweTabs<Content: View>: View {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     tabButton(item, index: index)
                     if variant == "stepper" && index < items.count - 1 {
-                        Rectangle().fill(Color.secondary.opacity(0.35)).frame(width: CGFloat(2), height: CGFloat(20)).padding(.leading, CGFloat(15))
+                        Rectangle().fill(contentColor.opacity(0.35)).frame(width: CGFloat(2), height: CGFloat(20)).padding(.leading, CGFloat(15))
                     }
                 }
             }
@@ -111,7 +111,7 @@ struct DoweTabs<Content: View>: View {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 tabButton(item, index: index)
                 if variant == "stepper" && index < items.count - 1 {
-                    Rectangle().fill(Color.secondary.opacity(0.35)).frame(width: CGFloat(48), height: CGFloat(2)).padding(.horizontal, CGFloat(8))
+                    Rectangle().fill(contentColor.opacity(0.35)).frame(width: CGFloat(48), height: CGFloat(2)).padding(.horizontal, CGFloat(8))
                 }
             }
         }
@@ -140,15 +140,15 @@ struct DoweTabs<Content: View>: View {
                             .background(active ? activeBackgroundColor : Color.clear)
                             .foregroundStyle(active ? activeContentColor : contentColor)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(active ? accentColor : Color.secondary.opacity(0.45), lineWidth: CGFloat(2)))
+                            .overlay(Circle().stroke(active ? accentColor : contentColor.opacity(0.45), lineWidth: CGFloat(2)))
                         Text(item.label).font(font).lineLimit(1)
                     }
                 } else {
                     Text(item.label).font(font).lineLimit(1)
                 }
             }
-            .padding(.horizontal, variant == "stepper" ? CGFloat(0) : CGFloat(16))
-            .padding(.vertical, CGFloat(6))
+            .padding(.horizontal, variant == "stepper" ? CGFloat(0) : CGFloat(12))
+            .padding(.vertical, CGFloat(8))
             .background(variant == "stepper" ? Color.clear : fill)
             .foregroundStyle(foreground)
             .clipShape(RoundedRectangle(cornerRadius: tabRadius))

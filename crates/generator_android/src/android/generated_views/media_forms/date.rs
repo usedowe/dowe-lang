@@ -27,7 +27,7 @@ fn android_runtime_media_date() -> &'static str {
                 }
                 Text("⌄", fontSize = 20.sp, color = contentColor)
             }
-            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(8.dp), onDismiss = { expanded = false; touched = true }) {
+            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(12.dp), minWidth = 286.dp, maxWidth = 340.dp, maxHeight = 420.dp, onDismiss = { expanded = false; touched = true }) {
                 DoweDateCalendar(month = month, selected = value, start = "", end = "", min = min, max = max, contentColor = contentColor, accentColor = contentColor, showPrevious = true, showNext = true, onPrevious = { month = month.minusMonths(1) }, onNext = { month = month.plusMonths(1) }, onSelect = { next -> onValueChange(next); month = YearMonth.from(LocalDate.parse(next)); expanded = false; touched = true })
             }
         }
@@ -65,7 +65,7 @@ private fun DoweDateRangeField(startValue: String, endValue: String, onStartChan
                 }
                 Text("⌄", fontSize = 20.sp, color = contentColor)
             }
-            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(8.dp), onDismiss = { expanded = false }) {
+            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(12.dp), minWidth = 600.dp, maxWidth = 720.dp, maxHeight = 460.dp, onDismiss = { expanded = false }) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DoweDateCalendar(month = month, selected = "", start = startValue, end = endValue, min = min, max = max, contentColor = contentColor, accentColor = contentColor, showPrevious = true, showNext = false, onPrevious = { month = month.minusMonths(1) }, onNext = {}, onSelect = { next -> if (!selectingEnd) { onStartChange(next); onEndChange(""); selectingEnd = true; month = YearMonth.from(LocalDate.parse(next)) } else { if (next < startValue) { onEndChange(startValue); onStartChange(next) } else onEndChange(next); selectingEnd = false; expanded = false } }, modifier = Modifier.weight(1f))
                     DoweDateCalendar(month = month.plusMonths(1), selected = "", start = startValue, end = endValue, min = min, max = max, contentColor = contentColor, accentColor = contentColor, showPrevious = false, showNext = true, onPrevious = {}, onNext = { month = month.plusMonths(1) }, onSelect = { next -> if (!selectingEnd) { onStartChange(next); onEndChange(""); selectingEnd = true; month = YearMonth.from(LocalDate.parse(next)) } else { if (next < startValue) { onEndChange(startValue); onStartChange(next) } else onEndChange(next); selectingEnd = false; expanded = false } }, modifier = Modifier.weight(1f))
@@ -106,17 +106,17 @@ private fun doweDateMonthDays(month: YearMonth): List<LocalDate?> {
 private fun DoweDateCalendar(month: YearMonth, selected: String, start: String, end: String, min: String?, max: String?, contentColor: Color, accentColor: Color, showPrevious: Boolean, showNext: Boolean, onPrevious: () -> Unit, onNext: () -> Unit, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("‹", modifier = Modifier.size(32.dp).clickable(enabled = showPrevious) { onPrevious() }, fontSize = 24.sp, color = contentColor, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text("‹", modifier = Modifier.size(32.dp).alpha(if (showPrevious) 1f else 0.35f).clickable(enabled = showPrevious) { onPrevious() }, fontSize = 24.sp, color = contentColor, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())), fontWeight = FontWeight.SemiBold, color = contentColor)
-            Text("›", modifier = Modifier.size(32.dp).clickable(enabled = showNext) { onNext() }, fontSize = 24.sp, color = contentColor, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text("›", modifier = Modifier.size(32.dp).alpha(if (showNext) 1f else 0.35f).clickable(enabled = showNext) { onNext() }, fontSize = 24.sp, color = contentColor, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             listOf("M", "T", "W", "T", "F", "S", "S").forEach { Text(it, modifier = Modifier.weight(1f), fontSize = 11.sp, color = contentColor.copy(alpha = 0.68f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
         }
         doweDateMonthDays(month).chunked(7).forEach { week ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 week.forEach { date ->
-                    if (date == null) Spacer(modifier = Modifier.weight(1f).height(34.dp)) else {
+                    if (date == null) Spacer(modifier = Modifier.weight(1f).height(32.dp)) else {
                         val value = date.toString()
                         val isStart = value == start
                         val isEnd = value == end
@@ -124,12 +124,12 @@ private fun DoweDateCalendar(month: YearMonth, selected: String, start: String, 
                         val isToday = date == LocalDate.now()
                         val inRange = start.isNotEmpty() && end.isNotEmpty() && value > start && value < end
                         val enabled = doweDateAllowed(value, min, max)
-                        Box(modifier = Modifier.weight(1f).height(34.dp).clip(RoundedCornerShape(8.dp)).background(if (isSelected) accentColor else if (inRange) accentColor.copy(alpha = 0.16f) else Color.Transparent).then(if (isToday && !isSelected) Modifier.border(1.dp, accentColor, RoundedCornerShape(8.dp)) else Modifier).then(if (enabled) Modifier.clickable { onSelect(value) } else Modifier), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(8.dp)).background(if (isSelected) accentColor else if (inRange) accentColor.copy(alpha = 0.16f) else Color.Transparent).then(if (isToday && !isSelected) Modifier.border(1.dp, accentColor, RoundedCornerShape(8.dp)) else Modifier).then(if (enabled) Modifier.clickable { onSelect(value) } else Modifier), contentAlignment = Alignment.Center) {
                             Text(date.dayOfMonth.toString(), fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color.White else contentColor.copy(alpha = if (enabled) 1f else 0.35f))
                         }
                     }
                 }
-                repeat(7 - week.size) { Spacer(modifier = Modifier.weight(1f).height(34.dp)) }
+                repeat(7 - week.size) { Spacer(modifier = Modifier.weight(1f).height(32.dp)) }
             }
         }
     }

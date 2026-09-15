@@ -9,12 +9,18 @@ r#"    LaunchedEffect(expanded) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label != null && !floating) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
         Box {
-            Row(modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).onGloballyPositioned { triggerHeight = it.size.height }.clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, if (validationError != null) DoweDesign.danger else contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).onGloballyPositioned { triggerHeight = it.size.height }.clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, if (validationError != null) DoweDesign.danger else contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).alpha(if (disabled) 0.56f else 1f).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Row(modifier = Modifier.clickable(enabled = !disabled && countries.isNotEmpty()) { expanded = true }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (selected != null) DoweSvg(viewBox = selected.viewBox, modifier = Modifier.size(24.dp).align(Alignment.CenterVertically).clip(RoundedCornerShape(999.dp)), color = contentColor, paths = selected.paths)
                     Text(if (selected == null) "+$country" else "+${selected.dialCode}", modifier = Modifier.align(Alignment.CenterVertically), fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.Bold, color = contentColor)
                     DoweSvg(viewBox = doweSelectArrowViewBox, modifier = Modifier.size(16.dp).align(Alignment.CenterVertically), color = contentColor, paths = doweSelectArrowPaths)
                 }
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(24.dp)
+                        .background(contentColor.copy(alpha = 0.22f))
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f).heightIn(min = minHeight), contentAlignment = Alignment.CenterStart) {
                     if (label != null && floating) Text(label, modifier = Modifier.align(Alignment.TopStart), fontSize = if (localValue.isEmpty()) fontSize else 12.sp, color = contentColor, fontWeight = FontWeight.SemiBold)

@@ -293,7 +293,9 @@ struct DoweCodeView: View {
             }
             .padding(.horizontal, CGFloat(12))
             .padding(.vertical, CGFloat(10))
-            Divider()
+            Rectangle()
+                .fill(contentColor.opacity(0.24))
+                .frame(height: CGFloat(1))
             ScrollView(.horizontal, showsIndicators: true) {
                 highlighted
                     .font(.system(size: 14, design: .monospaced))
@@ -322,4 +324,3 @@ struct DoweCodeView: View {
 }
 
 "#
-
