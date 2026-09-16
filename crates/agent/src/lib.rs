@@ -1,16 +1,16 @@
 mod auth;
 mod authoring;
-mod capability_map;
 mod catalog;
 mod client;
 pub mod codegraph_enrichment;
+pub mod component_contracts;
 mod context;
-mod conversation;
 mod error;
 mod examples;
 mod images;
 mod inference;
 mod instructions;
+pub mod intent;
 mod mcp;
 mod model;
 pub mod native_harness;
@@ -20,6 +20,7 @@ mod project;
 mod prompts;
 mod provider;
 mod request;
+mod response;
 mod skills;
 mod tools;
 mod usage;
@@ -33,13 +34,12 @@ pub use catalog::{AgentCatalogModel, models_with_local_overrides};
 pub use client::{
     GeneratedImage, MAX_IMAGE_PROMPT_BYTES, NativeRequestEvent, build_openai_image_request,
     image_mime_type, is_openai_image_model, openai_image_models, parse_openai_image_response,
-    send_agent_request, send_native_agent_request, send_native_agent_request_observed,
+    send_native_agent_request, send_native_agent_request_observed,
     send_native_agent_request_with_registry, send_openai_image_edit, send_openai_image_generation,
 };
 pub use context::{
     AgentCodeGraphNodeSummary, AgentCodeGraphSummary, summarize_codegraph, summarize_codegraph_for,
 };
-pub use conversation::{AgentConversation, agent_response_text};
 pub use error::{AgentError, AgentResult};
 pub use examples::{PublicExampleResult, PublicExampleSearch, search_public_examples};
 pub use images::{encode_image, encode_image_paths};
@@ -74,11 +74,13 @@ pub use provider::{
     provider_exists, provider_info, provider_is_configured, provider_models, resolve_provider_auth,
     validate_agent_model,
 };
-pub use request::{
-    default_llm_server_url, infer_language, infer_request_type, prepare_agent_request,
-};
+pub use request::{infer_language, infer_request_type, prepare_agent_request};
+pub use response::agent_response_text;
 pub use skills::{generation_skill_summaries, generation_skill_summaries_for};
-pub use tools::agent_tool_definitions;
+pub use tools::{
+    agent_tool_definitions, conversation_compatibility_tool_definitions,
+    read_only_agent_tool_definitions,
+};
 pub use usage::{AgentUsage, AgentUsageTotals, agent_response_usage};
 
 #[cfg(test)]

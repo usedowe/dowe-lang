@@ -19,6 +19,7 @@ fn prepared_codex_request(thinking_level: Option<crate::ThinkingLevel>) -> Agent
         root.path(),
         "hola",
         crate::AgentPrepareOptions {
+            request_type: Some(crate::AgentRequestType::Clarify),
             provider: Some("openai-codex".into()),
             model: Some("gpt-5.6-luna".into()),
             thinking_level,

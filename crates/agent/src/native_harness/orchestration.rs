@@ -1,12 +1,13 @@
 use super::{
     ChildExecutionRequest, HarnessConfig, HarnessHost, HarnessOutcome, HarnessRole, HarnessStore,
-    HarnessTask, ModelSelection, run_harness_turn, run_harness_turn_without_persistence,
+    HarnessTask, ModelSelection,
 };
 use crate::{AgentError, AgentResult};
 use dowe_agent_harness::{
     AgentExecutionKind, AgentRole, TaskState, WorkerRole, WorkerState, project_native_receipt_event,
 };
 use dowe_codegraph::CodeGraphBinding;
+use std::fs;
 use std::path::PathBuf;
 
 /// Execute one explicitly-owned native turn and project only terminal native
@@ -81,23 +82,21 @@ pub async fn run_orchestrated_turn(
     session.update_orchestration(record.clone())?;
     store.save_session(&mut session)?;
 
-    let result = run_harness_turn(
-        store,
-        &mut session,
-        config,
-        HarnessTask {
-            prompt,
-            role,
-            active,
-            explicit,
-            image_paths,
-            edit_scope,
-            expected_codegraph_binding: Some(binding.clone()),
-            permission_mode: Default::default(),
-        },
-        host,
-    )
-    .await;
+    let task = HarnessTask {
+        prompt,
+        role,
+        active,
+        explicit,
+        image_paths,
+        edit_scope,
+        expected_codegraph_binding: Some(binding.clone()),
+        permission_mode: Default::default(),
+    };
+    let result = if role == HarnessRole::Execute {
+        super::clean_runner::run_clean_build_task(store, &mut session, config, task, host).await
+    } else {
+        super::clean_runner::run_clean_read_task(store, &mut session, task, host).await
+    };
 
     let mut record = session
         .orchestration()
@@ -296,26 +295,39 @@ pub async fn run_child_turn(
     child_session.events.clear();
     child_session.context_start = 0;
     child_session.summary = None;
+    // The isolated store has no prior session file. Reset only its storage
+    // revision; the parent revision remains authoritative and is saved below.
+    child_session.revision = 0;
+    let child_home = ChildStoreDirectory::new()?;
+    let child_store = HarnessStore::new(&child_home.path, store.root())?;
     // The child uses the same bounded compaction policy in memory. Its
     // compacted summary and events are projected back to the parent only after
     // the turn completes; no child save can overwrite the parent's session.
-    let result = run_harness_turn_without_persistence(
-        store,
-        &mut child_session,
-        config,
-        HarnessTask {
-            prompt: &request.prompt,
-            role: request.role,
-            active: &request.active,
-            explicit: request.explicit.as_ref(),
-            image_paths: &[],
-            edit_scope: Some(request.edit_scope.clone()),
-            expected_codegraph_binding: Some(request.codegraph_binding.clone()),
-            permission_mode: Default::default(),
-        },
-        host,
-    )
-    .await;
+    let child_task = HarnessTask {
+        prompt: &request.prompt,
+        role: request.role,
+        active: &request.active,
+        explicit: request.explicit.as_ref(),
+        image_paths: &[],
+        edit_scope: Some(request.edit_scope.clone()),
+        expected_codegraph_binding: Some(request.codegraph_binding.clone()),
+        permission_mode: Default::default(),
+    };
+    let result = if request.role == HarnessRole::Execute {
+        super::clean_runner::run_clean_build_task(
+            &child_store,
+            &mut child_session,
+            config,
+            child_task,
+            host,
+        )
+        .await
+    } else {
+        let mut child_task = child_task;
+        child_task.edit_scope = None;
+        super::clean_runner::run_clean_read_task(&child_store, &mut child_session, child_task, host)
+            .await
+    };
 
     for mut event in child_session.events {
         if let Some(object) = event.as_object_mut() {
@@ -356,6 +368,26 @@ pub async fn run_child_turn(
     parent.update_orchestration(record)?;
     store.save_session(&mut parent)?;
     result
+}
+
+struct ChildStoreDirectory {
+    path: PathBuf,
+}
+
+impl ChildStoreDirectory {
+    fn new() -> AgentResult<Self> {
+        let path = std::env::temp_dir().join(format!("dowe-agent-child-{}", super::identifier()));
+        fs::create_dir(&path).map_err(|error| {
+            AgentError::new(format!("cannot create child harness store: {error}"))
+        })?;
+        Ok(Self { path })
+    }
+}
+
+impl Drop for ChildStoreDirectory {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
 }
 
 fn orchestration_error(error: impl std::fmt::Display) -> AgentError {

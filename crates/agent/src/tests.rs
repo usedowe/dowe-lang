@@ -73,6 +73,90 @@ fn implementation_request_injects_persistent_graph_navigation_and_impact() {
 }
 
 #[test]
+fn codegraph_context_ranks_dowe_terms_and_keeps_semantic_relations() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::write(temp.path().join("main.dowe"), "main\n").unwrap();
+    fs::create_dir_all(temp.path().join("views")).unwrap();
+    fs::create_dir_all(temp.path().join("server")).unwrap();
+    fs::write(
+        temp.path().join("views/home.dowe"),
+        "page Login\n  route handler:login layout:AppLayout\n",
+    )
+    .unwrap();
+    fs::write(temp.path().join("views/layout.dowe"), "layout AppLayout\n").unwrap();
+    fs::write(temp.path().join("server/auth.dowe"), "handler login\n").unwrap();
+
+    let prepared = prepare_agent_request(
+        temp.path(),
+        "implement login",
+        AgentPrepareOptions {
+            request_type: Some(AgentRequestType::Implementation),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let summary = prepared.context.codegraph.expect("Dowe CodeGraph context");
+    assert!(
+        summary
+            .relevant_nodes
+            .iter()
+            .any(|node| node.name == "Login")
+    );
+    assert!(
+        summary
+            .navigation_edges
+            .iter()
+            .any(|edge| edge.contains("handled_by") || edge.contains("uses_layout"))
+    );
+    assert!(!summary.navigation_truncated);
+    assert!(!summary.impact_truncated);
+    assert!(
+        summary
+            .relevant_nodes
+            .iter()
+            .any(|node| node.evidence == "compiler")
+    );
+}
+
+#[test]
+fn codegraph_context_uses_published_generation_metadata_when_available() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::write(temp.path().join("main.dowe"), "main\n").unwrap();
+    fs::write(temp.path().join("home.dowe"), "page Home\n").unwrap();
+    dowe_codegraph::clean::refresh_persistent_clean_codegraph(temp.path()).unwrap();
+
+    let summary = summarize_codegraph(temp.path(), 8).unwrap();
+    assert_eq!(summary.revision, 1);
+    assert_eq!(summary.freshness, "fresh");
+    assert!(!summary.stale);
+    assert!(
+        summary
+            .relevant_nodes
+            .iter()
+            .any(|node| node.name == "home.dowe")
+    );
+}
+
+#[test]
+fn codegraph_context_marks_published_generation_stale_after_source_change() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::write(temp.path().join("main.dowe"), "main\n").unwrap();
+    fs::write(temp.path().join("home.dowe"), "page Home\n").unwrap();
+    dowe_codegraph::clean::refresh_persistent_clean_codegraph(temp.path()).unwrap();
+    fs::write(temp.path().join("home.dowe"), "page Changed\n").unwrap();
+
+    let summary = summarize_codegraph(temp.path(), 8).unwrap();
+    assert_eq!(summary.freshness, "stale");
+    assert!(summary.stale);
+    assert!(
+        summary
+            .relevant_nodes
+            .iter()
+            .any(|node| node.name == "Changed")
+    );
+}
+
+#[test]
 fn basic_ui_prompt_asks_for_clarification_with_minimax() {
     let request_type = infer_request_type("crea el dashboard", false);
 

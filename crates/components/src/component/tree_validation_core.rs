@@ -3,6 +3,8 @@ fn validate_view_tree_with_parent(
     parent_is_grid: bool,
     parent_columns: Option<u16>,
 ) -> ComponentResult<()> {
+    let mut pending = vec![(node, parent_is_grid, parent_columns)];
+    while let Some((node, parent_is_grid, parent_columns)) = pending.pop() {
     if let Some(style) = node_style_props(node) {
         let grid_item = style.grid_item();
         let has_span = grid_item.col_span.is_some() || grid_item.row_span.is_some();
@@ -28,18 +30,18 @@ fn validate_view_tree_with_parent(
             content, children, ..
         } => {
             for child in content.iter().chain(children) {
-                validate_view_tree_with_parent(child, false, None)?;
+                pending.push((child, false, None));
             }
         }
         ViewNode::Scope { children, .. } | ViewNode::Each { children, .. } => {
             for child in children {
-                validate_view_tree_with_parent(child, false, None)?;
+                pending.push((child, false, None));
             }
         }
         ViewNode::Grid { props, children } => {
             let columns = grid_static_columns(props);
             for child in children {
-                validate_view_tree_with_parent(child, true, columns)?;
+                pending.push((child, true, columns));
             }
         }
         ViewNode::Box { children, .. }
@@ -54,7 +56,7 @@ fn validate_view_tree_with_parent(
         | ViewNode::Banner { children, .. }
         | ViewNode::Button { children, .. } => {
             for child in children {
-                validate_view_tree_with_parent(child, false, None)?;
+                pending.push((child, false, None));
             }
         }
         ViewNode::Drawer {
@@ -64,7 +66,7 @@ fn validate_view_tree_with_parent(
             ..
         } => {
             for child in header.iter().chain(body).chain(footer) {
-                validate_view_tree_with_parent(child, false, None)?;
+                pending.push((child, false, None));
             }
         }
         ViewNode::Modal {
@@ -74,7 +76,7 @@ fn validate_view_tree_with_parent(
             ..
         } => {
             for child in header.iter().chain(body).chain(footer) {
-                validate_view_tree_with_parent(child, false, None)?;
+                pending.push((child, false, None));
             }
         }
         ViewNode::Dropdown {
@@ -84,27 +86,27 @@ fn validate_view_tree_with_parent(
             ..
         } => {
             for child in trigger.iter().chain(header).chain(footer) {
-                validate_view_tree_with_parent(child, false, None)?;
+                pending.push((child, false, None));
             }
         }
         ViewNode::Tabs { tabs, .. } => {
             for tab in tabs {
                 for child in &tab.children {
-                    validate_view_tree_with_parent(child, false, None)?;
+                    pending.push((child, false, None));
                 }
             }
         }
         ViewNode::Accordion { items, .. } => {
             for item in items {
                 for child in &item.children {
-                    validate_view_tree_with_parent(child, false, None)?;
+                    pending.push((child, false, None));
                 }
             }
         }
         ViewNode::Carousel { slides, .. } => {
             for slide in slides {
                 for child in &slide.children {
-                    validate_view_tree_with_parent(child, false, None)?;
+                    pending.push((child, false, None));
                 }
             }
         }
@@ -136,7 +138,7 @@ fn validate_view_tree_with_parent(
                 .chain(end)
                 .chain(bottom)
             {
-                validate_view_tree_with_parent(child, false, None)?;
+                pending.push((child, false, None));
             }
         }
         ViewNode::BottomBar { .. } | ViewNode::SideNav { .. } | ViewNode::RailNav { .. } => {}
@@ -147,7 +149,7 @@ fn validate_view_tree_with_parent(
             ..
         } => {
             for child in header.iter().chain(body).chain(footer) {
-                validate_view_tree_with_parent(child, false, None)?;
+                pending.push((child, false, None));
             }
         }
         ViewNode::Scaffold {
@@ -167,7 +169,7 @@ fn validate_view_tree_with_parent(
                 .chain(bottom_bar)
                 .chain(overlays)
             {
-                validate_view_tree_with_parent(child, false, None)?;
+                pending.push((child, false, None));
             }
         }
         ViewNode::Input { .. }
@@ -234,5 +236,6 @@ fn validate_view_tree_with_parent(
         | ViewNode::Children => {}
     }
 
+    }
     Ok(())
 }

@@ -68,8 +68,14 @@ impl HarnessTools {
             max_output_bytes: Some(self.config.max_output_bytes),
             ..Default::default()
         };
-        let config = dowe_runtime::SpawnConfig::new(shell, ["-c".to_string(), args.command])
-            .with_options(options);
+        let config = isolated_shell_config(
+            shell,
+            args.command,
+            args.pty,
+            &self.root,
+            &self.root.join(".dowe/sandbox").join(&self.session),
+        )
+        .with_options(options);
         let child = match &self.supervisor {
             Some(supervisor) => dowe_runtime::spawn_supervised(config, supervisor),
             None => dowe_runtime::spawn(config),
@@ -81,4 +87,30 @@ impl HarnessTools {
             resource,
         })
     }
+}
+
+fn isolated_shell_config(
+    shell: String,
+    command: String,
+    pty: bool,
+    project_root: &Path,
+    sandbox_root: &Path,
+) -> dowe_runtime::SpawnConfig {
+    if !pty && cfg!(target_os = "macos") && Path::new("/usr/bin/sandbox-exec").is_file() {
+        let profile = format!(
+            "(version 1)\n(deny default)\n(import \"system.sb\")\n(allow file-read* (subpath \"/\"))\n(allow file-write* (subpath \"{}\"))\n(allow file-write* (subpath \"{}\"))\n(allow process-exec)\n(allow process-fork)\n(allow signal)\n(deny network*)\n",
+            profile_path(project_root),
+            profile_path(sandbox_root)
+        );
+        dowe_runtime::SpawnConfig::new(
+            "/usr/bin/sandbox-exec",
+            ["-p".to_string(), profile, shell, "-c".to_string(), command],
+        )
+    } else {
+        dowe_runtime::SpawnConfig::new(shell, ["-c".to_string(), command])
+    }
+}
+
+fn profile_path(path: &Path) -> String {
+    path.to_string_lossy().replace('"', "\\\"")
 }

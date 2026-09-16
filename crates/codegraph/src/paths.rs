@@ -24,6 +24,14 @@ pub(crate) fn language_for(relative: &str) -> String {
         "swift" => "swift",
         "css" => "css",
         "html" => "html",
+        "png" => "png",
+        "jpg" | "jpeg" => "jpeg",
+        "webp" => "webp",
+        "gif" => "gif",
+        "avif" => "avif",
+        "bmp" => "bmp",
+        "ico" => "ico",
+        "svg" => "svg",
         _ => "unknown",
     }
     .to_string()
@@ -78,6 +86,11 @@ fn should_skip(relative: &Path, name: &str, is_dir: bool) -> bool {
         return true;
     }
     if relative.starts_with(".dowe/codegraph") || relative.starts_with(".agents/codegraph") {
+        return true;
+    }
+    if relative.starts_with("agents/skills/private")
+        || relative.starts_with(".agents/skills/private")
+    {
         return true;
     }
     is_dir && name.starts_with('.') && name != ".agents" && name != ".dowe"

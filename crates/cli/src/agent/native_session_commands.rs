@@ -64,6 +64,9 @@ impl NativeSession {
                     serde_json::from_slice(&std::fs::read(path)?)?;
                 serde_json::to_value(dowe_agent::native_harness::evaluate_samples(&samples)?)?
             }
+            "/benchmark" if argument.trim() == "scaffold" => self.benchmark_scaffold_command()?,
+            "/benchmark" => self.benchmark_command()?,
+            "/observability" => self.observability_command(argument)?,
             "/session" => {
                 let recent_events = self
                     .session
@@ -489,3 +492,5 @@ impl NativeSession {
         Ok(())
     }
 }
+
+include!("native_session_commands_inspection.rs");

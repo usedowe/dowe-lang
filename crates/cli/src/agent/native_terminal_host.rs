@@ -1,9 +1,10 @@
-struct TerminalHost<'a> {
+#[derive(Clone)]
+struct TerminalHost {
     auth: AgentAuthStore,
     api_key: Option<String>,
     key_provider: String,
     json_output: bool,
-    usage: &'a mut AgentUsageTotals,
+    usage: std::sync::Arc<std::sync::Mutex<AgentUsageTotals>>,
     root: std::path::PathBuf,
     request_events: Vec<Value>,
     pending_responses: Vec<String>,
@@ -11,7 +12,9 @@ struct TerminalHost<'a> {
     automatic_approval: bool,
 }
 
-impl TerminalHost<'_> {
+struct TerminalWorker(TerminalHost);
+
+impl TerminalHost {
     fn queue_response(&mut self, event: &Value) {
         if let Some(text) = event["text"].as_str() {
             self.pending_responses
@@ -35,7 +38,10 @@ impl TerminalHost<'_> {
     }
 }
 
-impl HarnessHost for TerminalHost<'_> {
+impl HarnessHost for TerminalHost {
+    fn parallel_worker(&mut self) -> AgentResult<Option<ParallelHarnessHost>> {
+        Ok(Some(ParallelHarnessHost::new(TerminalWorker(self.clone()))))
+    }
     fn supervisor(&self) -> AgentResult<Option<dowe_runtime::SupervisorCommand>> {
         lifecycle::supervisor()
     }
@@ -134,7 +140,9 @@ impl HarnessHost for TerminalHost<'_> {
         &mut self,
         question: &ClarificationQuestion,
     ) -> AgentResult<Option<String>> {
-        if self.json_output || !crate::menus::is_interactive_terminal() {
+        if self.json_output
+            || (!crate::menus::is_interactive_terminal() && !self.activity.enabled())
+        {
             return Ok(None);
         }
         let _activity = self.activity.suspend()?;
@@ -158,7 +166,9 @@ impl HarnessHost for TerminalHost<'_> {
     }
 
     async fn approve(&mut self, approval: &Approval) -> AgentResult<Option<bool>> {
-        if self.json_output || !crate::menus::is_interactive_terminal() {
+        if self.json_output
+            || (!crate::menus::is_interactive_terminal() && !self.activity.enabled())
+        {
             return Ok(None);
         }
         if self.automatic_approval {
@@ -316,6 +326,66 @@ impl HarnessHost for TerminalHost<'_> {
 
     fn secrets(&self) -> Vec<String> {
         credential_secrets(&self.auth, self.api_key.as_deref())
+    }
+}
+
+impl ParallelWorker for TerminalWorker {
+    fn open_terminal(&mut self) -> AgentResult<Box<dyn dowe_agent::native_harness::HarnessTerminal>> {
+        <TerminalHost as HarnessHost>::open_terminal(&mut self.0)
+    }
+
+    fn send<'a>(
+        &'a mut self,
+        request: &'a AgentRequest,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = AgentResult<AgentServerResponse>> + Send + 'a>,
+    > {
+        Box::pin(async move { self.0.send_provider(request).await })
+    }
+
+    fn approve<'a>(
+        &'a mut self,
+        approval: &'a Approval,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AgentResult<Option<bool>>> + Send + 'a>> {
+        Box::pin(async move { <TerminalHost as HarnessHost>::approve(&mut self.0, approval).await })
+    }
+
+    fn generate_image<'a>(
+        &'a mut self,
+        selection: &'a ModelSelection,
+        approval: &'a Approval,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AgentResult<dowe_agent::GeneratedImage>> + Send + 'a>> {
+        Box::pin(async move { <TerminalHost as HarnessHost>::generate_image(&mut self.0, selection, approval).await })
+    }
+
+    fn ask_clarification<'a>(
+        &'a mut self,
+        question: &'a ClarificationQuestion,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AgentResult<Option<String>>> + Send + 'a>> {
+        Box::pin(async move { <TerminalHost as HarnessHost>::ask_clarification(&mut self.0, question).await })
+    }
+
+    fn validate_dowe_project<'a>(
+        &'a mut self,
+        root: &'a std::path::Path,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AgentResult<Value>> + Send + 'a>> {
+        Box::pin(async move { <TerminalHost as HarnessHost>::validate_dowe_project(&mut self.0, root).await })
+    }
+
+    fn event(&mut self, event: &Value) -> AgentResult<()> {
+        <TerminalHost as HarnessHost>::event(&mut self.0, event)
+    }
+
+    fn supervisor(&self) -> AgentResult<Option<dowe_runtime::SupervisorCommand>> {
+        <TerminalHost as HarnessHost>::supervisor(&self.0)
+    }
+
+    fn take_request_events(&mut self) -> Vec<Value> {
+        <TerminalHost as HarnessHost>::take_request_events(&mut self.0)
+    }
+
+    fn secrets(&self) -> Vec<String> {
+        <TerminalHost as HarnessHost>::secrets(&self.0)
     }
 }
 

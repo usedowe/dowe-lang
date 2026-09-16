@@ -46,7 +46,7 @@ pub struct HarnessTurn {
 }
 
 pub fn response_turn(payload: &Value) -> AgentResult<HarnessTurn> {
-    if crate::conversation::response_failed(None, payload) {
+    if crate::response::response_failed(None, payload) {
         return Err(AgentError::new(
             "provider returned an unsuccessful response",
         ));

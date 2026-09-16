@@ -149,8 +149,121 @@ mod codegraph_contract_tests {
             .collect::<Vec<_>>();
         assert!(names.iter().all(|name| matches!(
             name.as_str(),
-            "ask_user" | "get_skill" | "read_file" | "list_files" | "search" | "convert_svg"
+            "ask_user"
+                | "get_skill"
+                | "read_file"
+                | "list_files"
+                | "search"
+                | "convert_svg"
+                | "find_component"
+                | "get_component_contract"
+                | "search_codegraph"
+                | "get_node"
+                | "get_dependencies"
+                | "get_consumers"
+                | "get_source"
+                | "get_related"
+                | "get_impact"
         )));
+    }
+
+    #[test]
+    fn codegraph_queries_use_the_unified_index_and_stay_read_only() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("main.dowe"), "main\n").unwrap();
+        fs::write(root.path().join("page.dowe"), "page Login\n").unwrap();
+        let tools =
+            HarnessTools::new(root.path(), "codegraph-query", HarnessConfig::default()).unwrap();
+        let result = tools
+            .execute_read(&ToolCall::new(
+                "search",
+                "search_codegraph",
+                json!({"query":"page.dowe", "scope":"frontend", "limit":10}),
+            ))
+            .unwrap();
+        assert!(
+            result["nodes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|node| node["name"] == "page.dowe")
+        );
+        assert_eq!(result["truncated"], false);
+    }
+
+    #[test]
+    fn graph_declarations_and_source_are_progressively_read() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("main.dowe"), "main\n").unwrap();
+        fs::write(
+            root.path().join("page.dowe"),
+            "page Login\nText \"hello\"\n",
+        )
+        .unwrap();
+        let tools = HarnessTools::new(
+            root.path(),
+            "codegraph-declaration",
+            HarnessConfig::default(),
+        )
+        .unwrap();
+        let result = tools
+            .execute_read(&ToolCall::new(
+                "search",
+                "search_codegraph",
+                json!({"query":"Login", "scope":"frontend", "limit":10}),
+            ))
+            .unwrap();
+        let node = result["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|node| node["kind"] == "page")
+            .expect("typed page declaration");
+        let source = tools
+            .execute_read(&ToolCall::new(
+                "source",
+                "get_source",
+                json!({"id":node["id"], "offset":1, "limit":10}),
+            ))
+            .unwrap();
+        assert_eq!(source["path"], "page.dowe");
+        assert!(
+            source["source"]["content"]
+                .as_str()
+                .unwrap()
+                .contains("page Login")
+        );
+    }
+
+    #[test]
+    fn component_queries_keep_summary_and_contract_separate() {
+        let root = tempfile::tempdir().unwrap();
+        let tools =
+            HarnessTools::new(root.path(), "component-contract", HarnessConfig::default()).unwrap();
+        let summary = tools
+            .execute_read(&ToolCall::new(
+                "component-summary",
+                "find_component",
+                json!({"name":"Button"}),
+            ))
+            .unwrap();
+        assert_eq!(summary["detail"], false);
+        assert!(summary["results"][0].get("props").is_none());
+        let detail = tools
+            .execute_read(&ToolCall::new(
+                "component-detail",
+                "get_component_contract",
+                json!({"name":"Button"}),
+            ))
+            .unwrap();
+        assert_eq!(detail["detail"], true);
+        assert!(detail["contract"]["props"].as_array().unwrap().len() > 0);
+        assert!(
+            detail["contract"]["example"]
+                .as_str()
+                .unwrap()
+                .contains("Button")
+        );
     }
 
     #[test]

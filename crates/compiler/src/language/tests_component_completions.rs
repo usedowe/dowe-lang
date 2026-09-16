@@ -364,4 +364,3 @@ fn completions_include_translation_keys() {
             .any(|item| item.label == "\"home.hero.title\"")
     );
 }
-

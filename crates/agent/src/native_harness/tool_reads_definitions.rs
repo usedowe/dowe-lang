@@ -31,6 +31,44 @@ struct SvgConversionArgs {
     #[serde(default = "source_svg_format")]
     format: String,
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ComponentLookupArgs {
+    name: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CodeGraphSearchArgs {
+    query: String,
+    #[serde(default)]
+    scope: String,
+    #[serde(default = "codegraph_limit")]
+    limit: usize,
+    #[serde(default)]
+    depth: usize,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CodeGraphNodeArgs {
+    id: String,
+    #[serde(default = "codegraph_limit")]
+    limit: usize,
+    #[serde(default)]
+    depth: usize,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CodeGraphSourceArgs {
+    id: String,
+    #[serde(default = "first_line")]
+    offset: usize,
+    #[serde(default = "page_size")]
+    limit: usize,
+}
+
+fn codegraph_limit() -> usize {
+    10
+}
 #[derive(Debug, Default, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 enum SkillSource {

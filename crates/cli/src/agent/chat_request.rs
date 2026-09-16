@@ -2,9 +2,7 @@ pub(super) async fn run_agent_chat_command(
     args: &[String],
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut parsed = parse_agent_args(args, true)?;
-    let auth = if parsed.uses_legacy_server {
-        None
-    } else {
+    let auth = {
         let store = AgentAuthStore::from_default_path()?;
         let preferences = open_preferences()?;
         let provider = resolve_request_provider(&parsed, &store, &preferences)?;
@@ -36,9 +34,7 @@ pub(super) async fn run_agent_chat_command(
             Some(auth)
         }
     };
-    if !parsed.uses_legacy_server
-        && parsed.options.request_type == Some(AgentRequestType::Conversation)
-    {
+    if parsed.options.request_type == Some(AgentRequestType::Conversation) {
         let provider = parsed.provider.as_deref().ok_or("provider missing")?;
         let selection = dowe_agent::native_harness::ModelSelection {
             provider: provider.into(),
@@ -60,7 +56,22 @@ pub(super) async fn run_agent_chat_command(
                 parsed.json_output,
                 &mut AgentUsageTotals::default(),
             )
-            .await?;
+            .await;
+        let outcome = match outcome {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                if parsed.json_output {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "event": "error",
+                            "payload": {"error": {"message": error.to_string()}}
+                        })
+                    );
+                }
+                return Err(error.into());
+            }
+        };
         if !matches!(
             outcome,
             dowe_agent::native_harness::HarnessOutcome::Completed
@@ -71,7 +82,7 @@ pub(super) async fn run_agent_chat_command(
         }
         return Ok(());
     }
-    let event = send_parsed_request(parsed, auth, &mut AgentConversation::default()).await?;
+    let event = send_parsed_request(parsed, auth).await?;
     if event.event == AgentDesktopEventKind::Error {
         return Err(event
             .payload
@@ -87,15 +98,9 @@ pub(super) async fn run_agent_chat_command(
 async fn send_parsed_request(
     parsed: ParsedAgentChatArgs,
     auth: Option<ResolvedProviderAuth>,
-    conversation: &mut AgentConversation,
 ) -> Result<AgentDesktopEvent, Box<dyn std::error::Error>> {
     let root = env::current_dir()?;
-    let conversational = parsed.options.request_type == Some(AgentRequestType::Conversation);
-    let prepared = if conversational {
-        conversation.prepare(root, &parsed.prompt, parsed.options)?
-    } else {
-        prepare_agent_request(root, &parsed.prompt, parsed.options)?
-    };
+    let prepared = prepare_agent_request(root, &parsed.prompt, parsed.options)?;
     let request = prepared.request;
     let prepared_payload = json!({
         "requestId": request.request_id,
@@ -116,15 +121,11 @@ async fn send_parsed_request(
     };
     print_agent_event(&prepared_event, parsed.json_output)?;
 
-    let response = if parsed.uses_legacy_server {
-        send_agent_request(&parsed.server_url, &request).await
-    } else {
-        send_native_agent_request(
-            &request,
-            auth.as_ref().ok_or("provider authentication is required")?,
-        )
-        .await
-    };
+    let response = send_native_agent_request(
+        &request,
+        auth.as_ref().ok_or("provider authentication is required")?,
+    )
+    .await;
     let response = match response {
         Ok(response) => response,
         Err(error) => {
@@ -144,17 +145,6 @@ async fn send_parsed_request(
             return Ok(event);
         }
     };
-    if conversational && let Err(error) = conversation.record_response(&request, &response) {
-        let event = AgentDesktopEvent {
-            event: AgentDesktopEventKind::Error,
-            request_id: request.request_id,
-            request_type: request.request_type,
-            model: request.model,
-            payload: json!({"error":{"code":"invalid_conversation_response","message":error.to_string()}}),
-        };
-        print_agent_event(&event, parsed.json_output)?;
-        return Ok(event);
-    }
     let event = AgentDesktopEvent {
         event: AgentDesktopEventKind::ResponseReceived,
         request_id: response.request_id,
@@ -165,4 +155,3 @@ async fn send_parsed_request(
     print_agent_event(&event, parsed.json_output)?;
     Ok(event)
 }
-

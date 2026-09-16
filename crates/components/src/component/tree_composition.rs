@@ -173,4 +173,3 @@ fn validate_box_positioning(
     }
     Ok(())
 }
-

@@ -51,8 +51,10 @@ impl HarnessTools {
         Ok((value.into(), before))
     }
 
-    fn shell_env(&self) -> BTreeMap<String, String> {
-        [
+    fn shell_env(&self) -> AgentResult<BTreeMap<String, String>> {
+        let sandbox = self.root.join(".dowe/sandbox").join(&self.session);
+        fs::create_dir_all(&sandbox)?;
+        let mut env = [
             "PATH",
             "HOME",
             "USERPROFILE",
@@ -63,7 +65,15 @@ impl HarnessTools {
         ]
         .into_iter()
         .filter_map(|name| std::env::var(name).ok().map(|value| (name.into(), value)))
-        .collect()
+        .collect::<BTreeMap<_, _>>();
+        env.insert("DOWE_AGENT_SANDBOX_ROOT".into(), sandbox.to_string_lossy().into());
+        env.insert("HOME".into(), sandbox.join("home").to_string_lossy().into());
+        env.insert("TMPDIR".into(), sandbox.join("tmp").to_string_lossy().into());
+        env.insert("TMP".into(), sandbox.join("tmp").to_string_lossy().into());
+        env.insert("TEMP".into(), sandbox.join("tmp").to_string_lossy().into());
+        fs::create_dir_all(sandbox.join("home"))?;
+        fs::create_dir_all(sandbox.join("tmp"))?;
+        Ok(env)
     }
 
     fn apply_asset(&self, approval: Approval) -> AgentResult<Value> {

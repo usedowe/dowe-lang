@@ -91,17 +91,33 @@ impl DevCompilerSession {
         previous: Option<&CompiledProject>,
         compile_apps: bool,
     ) -> DoweResult<CompiledProject> {
-        compile_project(
-            &self.root,
-            CompileEnvironment::Development,
-            false,
-            compile_server,
-            !self.platforms.is_empty(),
-            compile_apps,
-            Some(self.platforms.clone()),
-            Some(&mut self.module_cache),
-            previous,
-        )
+        let root = &self.root;
+        let platforms = self.platforms.clone();
+        let module_cache = &mut self.module_cache;
+        std::thread::scope(|scope| {
+            let handle = std::thread::Builder::new()
+                .name("dowe-dev-compiler".into())
+                .stack_size(32 * 1024 * 1024)
+                .spawn_scoped(scope, || {
+                    compile_project(
+                        root,
+                        CompileEnvironment::Development,
+                        false,
+                        compile_server,
+                        !platforms.is_empty(),
+                        compile_apps,
+                        Some(platforms),
+                        Some(module_cache),
+                        previous,
+                    )
+                })
+                .map_err(|error| {
+                    DoweError::new(format!("failed to start Dowe compiler: {error}"))
+                })?;
+            handle
+                .join()
+                .map_err(|_| DoweError::new("Dowe compiler thread panicked"))?
+        })
     }
 
     fn invalidate(&mut self, paths: &[String]) {

@@ -44,10 +44,8 @@ pub(super) async fn run_agent_session_with_args(
         &preferences,
     )?;
     let mut usage = AgentUsageTotals::default();
-    let mut conversation = AgentConversation::default();
     let mut native: Option<super::native::NativeSession> = None;
-    let native_enabled = !parsed.uses_legacy_server
-        && parsed.options.request_type == Some(AgentRequestType::Conversation);
+    let native_enabled = parsed.options.request_type == Some(AgentRequestType::Conversation);
     let mut api_key = parsed.api_key.clone();
 
     if !parsed.json_output {
@@ -113,7 +111,6 @@ pub(super) async fn run_agent_session_with_args(
             if let Some(native) = &mut native {
                 native.reset()?;
             }
-            conversation.reset();
             usage = AgentUsageTotals::default();
             eprintln!("Started a new conversation.");
             continue;
@@ -173,10 +170,6 @@ pub(super) async fn run_agent_session_with_args(
             continue;
         }
         if command == "/thinking" {
-            if parsed.uses_legacy_server {
-                eprintln!("Thinking selection is only available for native provider requests.");
-                continue;
-            }
             let Some(selected_provider) = provider.as_deref() else {
                 eprintln!("Select a provider with /login or /model first.");
                 continue;
@@ -214,7 +207,9 @@ pub(super) async fn run_agent_session_with_args(
             continue;
         }
 
+        let benchmark_run = command.trim() == "/benchmark run";
         if native_enabled
+            && !benchmark_run
             && matches!(
                 command.split_whitespace().next(),
                 Some(
@@ -228,6 +223,8 @@ pub(super) async fn run_agent_session_with_args(
                         | "/shell"
                         | "/env"
                         | "/evaluate"
+                        | "/benchmark"
+                        | "/observability"
                         | "/processes"
                         | "/watch"
                         | "/queue"
@@ -290,6 +287,18 @@ pub(super) async fn run_agent_session_with_args(
                     .unwrap_or(provider_default_model(&selected_provider)?.into()),
                 thinking,
             };
+            if command.trim() == "/benchmark run" {
+                match native
+                    .as_mut()
+                    .expect("native session")
+                    .run_benchmark(selection, api_key.clone())
+                    .await
+                {
+                    Ok(result) => println!("{}", result),
+                    Err(error) => eprintln!("{}", super::markdown::terminal_text(&error.to_string())),
+                }
+                continue;
+            }
             native.as_mut().expect("native session").image_paths =
                 parsed.options.image_paths.clone();
             let work = native.as_mut().expect("native session").run(
@@ -348,12 +357,8 @@ pub(super) async fn run_agent_session_with_args(
         request.api_key = api_key.clone();
         request.options.provider = Some(selected_provider.clone());
         request.options.model = model.clone();
-        request.options.thinking_level = if parsed.uses_legacy_server {
-            None
-        } else {
-            thinking
-        };
-        match send_parsed_request(request, Some(auth), &mut conversation).await {
+        request.options.thinking_level = thinking;
+        match send_parsed_request(request, Some(auth)).await {
             Ok(event) if event.event == AgentDesktopEventKind::ResponseReceived => {
                 usage.record(&selected_provider, &event.model, &event.payload);
                 if event.request_type == AgentRequestType::Conversation {

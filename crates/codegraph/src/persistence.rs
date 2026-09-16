@@ -1,14 +1,23 @@
+use crate::clean;
 use crate::error::{CodeGraphError, CodeGraphResult};
 use crate::metrics::fingerprint_bytes;
 use crate::paths::{discover_files, slash_path};
-use crate::{BuildOptions, CodeGraph, CodeGraphMode, Edge, Node, build_codegraph};
+use crate::{
+    BuildOptions, CodeGraph, CodeGraphMode, Edge, Node,
+    clean::{build_clean_graph, legacy_codegraph_from_clean},
+};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
+mod lock;
+mod storage;
+use storage::*;
+
 const VERSION: u32 = 1;
-const STORE: &str = ".agents/codegraph";
+const STORE: &str = ".dowe/codegraph";
+const LEGACY_STORE: &str = ".agents/codegraph";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,6 +42,8 @@ pub enum GraphFreshness {
 #[serde(rename_all = "camelCase")]
 pub struct CodeGraphSnapshot {
     pub graph: CodeGraph,
+    #[serde(default)]
+    pub clean_graph: Option<clean::CleanGraph>,
     pub manifest: GraphManifest,
     pub freshness: GraphFreshness,
     pub changed: Vec<String>,
@@ -74,13 +85,39 @@ pub fn read_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<Code
         .canonicalize()
         .map_err(|e| CodeGraphError::at_path(root.as_ref(), e.to_string()))?;
     let mode = crate::detect_codegraph_mode(&root)?;
-    let dir = root.join(STORE);
-    if !dir.join("CURRENT").exists() {
-        return Err(CodeGraphError::new(
-            "persisted CodeGraph generation is missing",
-        ));
-    }
-    read_current(&dir, &root, mode)
+    let _lock = lock::acquire(&root, false)?;
+    let dir = [STORE, LEGACY_STORE]
+        .iter()
+        .map(|store| root.join(store))
+        .find(|dir| dir.join("CURRENT").is_file())
+        .ok_or_else(|| CodeGraphError::new("persisted CodeGraph generation is missing"))?;
+    let mut snapshot = read_current(&dir, &root, mode)?;
+    snapshot.freshness = if current_fingerprints(&root, mode)? == snapshot.manifest.fingerprints {
+        GraphFreshness::Fresh
+    } else {
+        GraphFreshness::Stale
+    };
+    Ok(snapshot)
+}
+
+fn current_fingerprints(
+    root: &Path,
+    mode: CodeGraphMode,
+) -> CodeGraphResult<BTreeMap<String, String>> {
+    Ok(discover_files(root, mode)?
+        .iter()
+        .filter_map(|path| {
+            let relative = path.strip_prefix(root).ok().map(slash_path)?;
+            if relative.starts_with(".agents/plans/")
+                || relative.starts_with(".agents/capabilities/")
+                || relative.starts_with(".dowe/")
+            {
+                return None;
+            }
+            let bytes = fs::read(path).ok()?;
+            Some((relative, fingerprint_bytes(&bytes)))
+        })
+        .collect())
 }
 pub fn refresh_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<CodeGraphSnapshot> {
     let root = root
@@ -89,11 +126,16 @@ pub fn refresh_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<C
         .map_err(|e| CodeGraphError::at_path(root.as_ref(), e.to_string()))?;
     let mode = crate::detect_codegraph_mode(&root)?;
     let current = store_dir(&root)?;
+    let _lock = lock::acquire(&root, true)?;
+    let had_current_generation = current.join("CURRENT").is_file();
     let files = discover_files(&root, mode)?;
     let fingerprints = files
         .iter()
         .filter_map(|p| {
             let rel = p.strip_prefix(&root).ok().map(slash_path)?;
+            if rel.starts_with(".agents/plans/") || rel.starts_with(".dowe/") {
+                return None;
+            }
             let bytes = fs::read(p).ok()?;
             Some((rel, fingerprint_bytes(&bytes)))
         })
@@ -101,10 +143,15 @@ pub fn refresh_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<C
     let old = if current.join("CURRENT").exists() {
         Some(read_current(&current, &root, mode)?)
     } else {
-        None
+        [LEGACY_STORE]
+            .iter()
+            .map(|store| root.join(store))
+            .find(|dir| dir.join("CURRENT").is_file())
+            .map(|dir| read_current(&dir, &root, mode))
+            .transpose()?
     };
     if let Some(snapshot) = old.as_ref() {
-        if snapshot.manifest.fingerprints == fingerprints {
+        if had_current_generation && snapshot.manifest.fingerprints == fingerprints {
             if let Some(generation) = snapshot.generation.as_deref() {
                 prune_generations(&current, generation)?;
             }
@@ -131,7 +178,8 @@ pub fn refresh_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<C
         })
         .unwrap_or_default();
 
-    let extracted = build_codegraph(&root, BuildOptions { mode: Some(mode) })?;
+    let extracted_clean = build_clean_graph(&root, BuildOptions { mode: Some(mode) })?;
+    let extracted = legacy_codegraph_from_clean(&extracted_clean, mode, &root);
     let graph = old
         .as_ref()
         .map(|s| replace_file_contributions(s.graph.clone(), &extracted, &changed, &deleted))
@@ -145,10 +193,11 @@ pub fn refresh_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<C
         revision,
         fingerprints,
     };
-    let generation = write_generation(&current, &manifest, &graph)?;
+    let generation = write_generation(&current, &manifest, &graph, &extracted_clean)?;
     Ok(CodeGraphSnapshot {
         generation: Some(generation),
         graph,
+        clean_graph: Some(extracted_clean),
         manifest,
         freshness: if old.is_none() {
             GraphFreshness::Initialized
@@ -188,6 +237,11 @@ pub fn replace_file_contributions(
         .map(|n| n.id.clone())
         .chain(additions.iter().map(|n| n.id.clone()))
         .collect::<BTreeSet<_>>();
+    let affected = removed
+        .iter()
+        .cloned()
+        .chain(additions.iter().map(|n| n.id.clone()))
+        .collect::<BTreeSet<_>>();
     base.nodes.extend(additions);
     base.edges.extend(
         replacement
@@ -196,7 +250,7 @@ pub fn replace_file_contributions(
             .filter(|e| {
                 ids.contains(&e.from)
                     && ids.contains(&e.to)
-                    && (removed.contains(&e.from) || removed.contains(&e.to))
+                    && (affected.contains(&e.from) || affected.contains(&e.to))
             })
             .cloned(),
     );
@@ -211,282 +265,66 @@ pub fn query_persistent_codegraph(
     query: CodeGraphQuery,
 ) -> CodeGraphResult<GraphQueryResult> {
     let root = root.as_ref().canonicalize()?;
-    let snapshot = refresh_persistent_codegraph(&root)?;
-    let limit = query.limit.min(128);
-    let index = read_index(&root, &snapshot.manifest, &snapshot.graph)?;
-    let text = query.text.to_ascii_lowercase();
-    let terms = text
-        .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
-        .filter(|t| t.len() > 2)
-        .collect::<Vec<_>>();
-    let ids = index
+    let _snapshot = refresh_persistent_codegraph(&root)?;
+    let clean = crate::clean::build_clean_graph(&root, BuildOptions::default())?;
+    let result = crate::clean::GraphQuery {
+        kind: crate::clean::QueryKind::Search,
+        value: query.text,
+        namespace: None,
+        max_nodes: query.limit.min(128),
+        max_depth: query.depth.min(8),
+    }
+    .execute(&clean);
+    let legacy = crate::clean::legacy_codegraph_from_clean(
+        &clean,
+        crate::detect_codegraph_mode(&root)?,
+        &root,
+    );
+    let selected = result
+        .nodes
         .iter()
-        .filter(|(path, _id)| {
-            terms.is_empty() || terms.iter().any(|t| path.to_ascii_lowercase().contains(t))
-        })
-        .map(|(_, id)| id)
+        .map(|node| node.id.as_str())
         .collect::<BTreeSet<_>>();
-    let mut nodes = snapshot
-        .graph
+    let nodes = result
         .nodes
         .iter()
-        .filter(|n| ids.contains(&n.id) || (terms.is_empty() && n.path.is_some()))
-        .cloned()
-        .collect::<Vec<_>>();
-    nodes.sort_by(|a, b| a.id.cmp(&b.id));
-    nodes.truncate(limit);
-    let selected = nodes.iter().map(|n| n.id.clone()).collect::<BTreeSet<_>>();
-    let incoming = snapshot
-        .graph
-        .edges
-        .iter()
-        .filter(|e| selected.contains(&e.to))
+        .filter_map(|node| legacy.nodes.iter().find(|legacy| legacy.id == node.id))
         .cloned()
         .collect();
-    let outgoing = snapshot
-        .graph
+    let incoming = legacy
         .edges
         .iter()
-        .filter(|e| selected.contains(&e.from))
+        .filter(|edge| selected.contains(edge.to.as_str()))
         .cloned()
         .collect();
-    let impact_ids = traverse(&snapshot.graph, &selected, query.depth.min(4));
-    let mut impact = snapshot
-        .graph
+    let outgoing = legacy
+        .edges
+        .iter()
+        .filter(|edge| selected.contains(edge.from.as_str()))
+        .cloned()
+        .collect();
+    let impact_result = crate::clean::GraphQuery {
+        kind: crate::clean::QueryKind::Impact,
+        value: result
+            .nodes
+            .first()
+            .map(|node| node.id.clone())
+            .unwrap_or_default(),
+        namespace: None,
+        max_nodes: query.limit.min(128),
+        max_depth: query.depth.min(8),
+    }
+    .execute(&clean);
+    let impact = impact_result
         .nodes
         .iter()
-        .filter(|n| impact_ids.contains(&n.id))
+        .filter_map(|node| legacy.nodes.iter().find(|legacy| legacy.id == node.id))
         .cloned()
-        .collect::<Vec<_>>();
-    impact.sort_by(|a, b| a.id.cmp(&b.id));
-    impact.truncate(limit);
+        .collect();
     Ok(GraphQueryResult {
         nodes,
         incoming,
         outgoing,
         impact,
     })
-}
-fn traverse(graph: &CodeGraph, start: &BTreeSet<String>, depth: usize) -> BTreeSet<String> {
-    let mut seen = start.clone();
-    let mut q = start
-        .iter()
-        .map(|x| (x.clone(), 0))
-        .collect::<VecDeque<_>>();
-    while let Some((id, d)) = q.pop_front() {
-        if d >= depth {
-            continue;
-        }
-        for e in graph.edges.iter().filter(|e| e.from == id || e.to == id) {
-            let next = if e.from == id { &e.to } else { &e.from };
-            if seen.insert(next.clone()) {
-                q.push_back((next.clone(), d + 1));
-            }
-        }
-    }
-    seen
-}
-fn store_dir(root: &Path) -> CodeGraphResult<PathBuf> {
-    let dir = root.join(STORE);
-    reject_path(root, &dir)?;
-    fs::create_dir_all(&dir)?;
-    Ok(dir)
-}
-fn reject_path(root: &Path, path: &Path) -> CodeGraphResult<()> {
-    let rel = path
-        .strip_prefix(root)
-        .map_err(|_| CodeGraphError::new("CodeGraph path escapes project root"))?;
-    if rel.components().any(|c| {
-        matches!(
-            c,
-            Component::ParentDir | Component::RootDir | Component::Prefix(_)
-        )
-    }) {
-        return Err(CodeGraphError::new("CodeGraph path traversal rejected"));
-    }
-    let mut p = root.to_path_buf();
-    for c in rel.components() {
-        p.push(c);
-        if p.exists() && fs::symlink_metadata(&p)?.file_type().is_symlink() {
-            return Err(CodeGraphError::at_path(
-                &p,
-                "CodeGraph path must not contain symlinks",
-            ));
-        }
-    }
-    Ok(())
-}
-fn read_current(
-    dir: &Path,
-    root: &Path,
-    mode: CodeGraphMode,
-) -> CodeGraphResult<CodeGraphSnapshot> {
-    let name = fs::read_to_string(dir.join("CURRENT"))?;
-    let generation = dir.join(name.trim());
-    reject_path(root, &generation)?;
-    let manifest: GraphManifest =
-        serde_json::from_slice(&fs::read(generation.join("manifest.json"))?)?;
-    if manifest.version != VERSION
-        || manifest.schema != VERSION
-        || manifest.root != root.to_string_lossy()
-        || manifest.mode != mode
-    {
-        return Err(CodeGraphError::new("CodeGraph generation is incompatible"));
-    }
-    let nodes = serde_json::from_slice(&fs::read(generation.join("nodes.json"))?)?;
-    let edges = serde_json::from_slice(&fs::read(generation.join("edges.json"))?)?;
-    Ok(CodeGraphSnapshot {
-        graph: CodeGraph {
-            mode,
-            root: ".".into(),
-            nodes,
-            edges,
-        },
-        manifest,
-        freshness: GraphFreshness::Stale,
-        changed: vec![],
-        deleted: vec![],
-        error: None,
-        generation: Some(name.trim().to_string()),
-    })
-}
-fn read_index(
-    root: &Path,
-    manifest: &GraphManifest,
-    graph: &CodeGraph,
-) -> CodeGraphResult<BTreeMap<String, String>> {
-    if manifest.root != root.to_string_lossy() || graph.mode != manifest.mode {
-        return Err(CodeGraphError::new("CodeGraph compatibility mismatch"));
-    }
-    let dir = store_dir(root)?;
-    let name = fs::read_to_string(dir.join("CURRENT"))?;
-    let value = serde_json::from_slice(&fs::read(dir.join(name.trim()).join("index.json"))?)?;
-    Ok(value)
-}
-fn write_generation(
-    dir: &Path,
-    manifest: &GraphManifest,
-    graph: &CodeGraph,
-) -> CodeGraphResult<String> {
-    let name = format!("generation-{}-{}", manifest.revision, std::process::id());
-    let tmp = dir.join(format!(".{name}.tmp"));
-    let generation = dir.join(&name);
-    fs::create_dir_all(&tmp)?;
-    for (file, value) in [
-        ("manifest.json", serde_json::to_vec_pretty(manifest)?),
-        ("nodes.json", serde_json::to_vec_pretty(&graph.nodes)?),
-        ("edges.json", serde_json::to_vec_pretty(&graph.edges)?),
-        (
-            "index.json",
-            serde_json::to_vec_pretty(
-                &graph
-                    .nodes
-                    .iter()
-                    .filter_map(|n| n.path.as_ref().map(|p| (p, n.id.clone())))
-                    .collect::<BTreeMap<_, _>>(),
-            )?,
-        ),
-    ] {
-        fs::write(tmp.join(file), value)?;
-    }
-    fs::rename(&tmp, &generation)?;
-    let pointer = dir.join("CURRENT.tmp");
-    fs::write(&pointer, format!("{name}\n"))?;
-    fs::rename(pointer, dir.join("CURRENT"))?;
-    prune_generations(dir, &name)?;
-    Ok(name)
-}
-
-fn prune_generations(dir: &Path, current: &str) -> CodeGraphResult<()> {
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let is_generation = name.starts_with("generation-") && name != current;
-        let is_temporary =
-            (name.starts_with(".generation-") && name.ends_with(".tmp")) || name == "CURRENT.tmp";
-        if !is_generation && !is_temporary {
-            continue;
-        }
-        let path = entry.path();
-        let metadata = fs::symlink_metadata(&path)?;
-        if metadata.file_type().is_symlink() {
-            return Err(CodeGraphError::at_path(
-                &path,
-                "CodeGraph generation must not be a symlink",
-            ));
-        }
-        if metadata.is_dir() {
-            fs::remove_dir_all(path)?;
-        } else {
-            fs::remove_file(path)?;
-        }
-    }
-    Ok(())
-}
-#[allow(dead_code)]
-fn _fingerprint(bytes: &[u8]) -> String {
-    fingerprint_bytes(bytes)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::TempDir;
-    #[test]
-    fn generation_round_trip_and_incremental_reuse() {
-        let d = TempDir::new().unwrap();
-        fs::create_dir_all(d.path().join("src")).unwrap();
-        fs::write(d.path().join("src/a.rs"), "pub fn a() {}\n").unwrap();
-        let first = ensure_persistent_codegraph(d.path()).unwrap();
-        assert_eq!(first.freshness, GraphFreshness::Initialized);
-        let second = refresh_persistent_codegraph(d.path()).unwrap();
-        assert_eq!(second.freshness, GraphFreshness::Fresh);
-        assert_eq!(second.manifest.revision, first.manifest.revision);
-        let current = fs::read_to_string(d.path().join(STORE).join("CURRENT")).unwrap();
-        let generation = d.path().join(STORE).join(current.trim());
-        assert!(generation.join("manifest.json").is_file());
-        assert!(generation.join("nodes.json").is_file());
-        assert!(generation.join("edges.json").is_file());
-        assert!(generation.join("index.json").is_file());
-        fs::write(generation.join("manifest.json"), "{}").unwrap();
-        assert!(refresh_persistent_codegraph(d.path()).is_err());
-    }
-
-    #[test]
-    fn refresh_keeps_only_the_current_generation() {
-        let d = TempDir::new().unwrap();
-        fs::write(d.path().join("main.py"), "print(1)\n").unwrap();
-
-        let first = ensure_persistent_codegraph(d.path()).unwrap();
-        fs::write(d.path().join("main.py"), "print(2)\n").unwrap();
-        let second = refresh_persistent_codegraph(d.path()).unwrap();
-        fs::write(d.path().join("main.py"), "print(3)\n").unwrap();
-        let third = refresh_persistent_codegraph(d.path()).unwrap();
-
-        let store = d.path().join(STORE);
-        let generations = fs::read_dir(&store)
-            .unwrap()
-            .filter_map(Result::ok)
-            .filter(|entry| {
-                entry
-                    .file_name()
-                    .to_string_lossy()
-                    .starts_with("generation-")
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(generations.len(), 1);
-        assert_eq!(
-            fs::read_to_string(store.join("CURRENT")).unwrap().trim(),
-            third.generation.as_deref().unwrap()
-        );
-        assert_ne!(first.generation, second.generation);
-        assert_ne!(second.generation, third.generation);
-
-        let stale = store.join("generation-stale");
-        fs::create_dir(&stale).unwrap();
-        fs::write(store.join("CURRENT.tmp"), "generation-stale\n").unwrap();
-        refresh_persistent_codegraph(d.path()).unwrap();
-        assert!(!stale.exists());
-        assert!(!store.join("CURRENT.tmp").exists());
-    }
 }

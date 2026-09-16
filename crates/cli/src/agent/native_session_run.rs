@@ -22,12 +22,13 @@ impl NativeSession {
                 .lines(width),
             );
         }
+        let shared_usage = std::sync::Arc::new(std::sync::Mutex::new(std::mem::take(usage)));
         let mut host = TerminalHost {
             auth,
             api_key,
             key_provider: active.provider.clone(),
             json_output,
-            usage,
+            usage: shared_usage.clone(),
             root: self.store.root().to_path_buf(),
             request_events: Vec::new(),
             pending_responses: Vec::new(),
@@ -37,7 +38,7 @@ impl NativeSession {
         let explicit = explicit.then_some(&active);
         if prompt == "/compact" {
             let result = activity
-                .drive(compact_harness_session(
+                .drive(compact_clean_session(
                     &self.store,
                     &mut self.session,
                     &self.config,
@@ -51,30 +52,21 @@ impl NativeSession {
             }
             self.transfer_activity_queue(&activity);
             host.flush_pending_responses()?;
+            drop(host);
+            *usage = std::sync::Arc::try_unwrap(shared_usage)
+                .map_err(|_| AgentError::new("usage ledger still has active workers"))?
+                .into_inner()
+                .map_err(|_| AgentError::new("usage ledger is poisoned"))?;
             result?;
             return Ok(HarnessOutcome::Completed);
         }
-        if matches!(prompt, "/plan" | "/review" | "/research") {
-            return Err(AgentError::new(
-                "Use /plan <task>, /research <question> or /review <task>",
-            ));
-        }
-        let (role, prompt) = if let Some(prompt) = prompt.strip_prefix("/plan ") {
-            (HarnessRole::Plan, prompt)
-        } else if let Some(prompt) = prompt.strip_prefix("/research ") {
-            (HarnessRole::Research, prompt)
-        } else if let Some(prompt) = prompt.strip_prefix("/review ") {
-            (HarnessRole::Review, prompt)
-        } else {
-            (HarnessRole::Execute, prompt)
-        };
         let result = activity
-            .drive(run_harness_turn(
+            .drive(dowe_agent::native_harness::run_agent_task(
                 &self.store,
                 &mut self.session,
                 &self.config,
                 dowe_agent::native_harness::HarnessTask {
-                    role,
+                    role: HarnessRole::Execute,
                     active: &active,
                     explicit,
                     prompt,
@@ -91,6 +83,11 @@ impl NativeSession {
         }
         self.transfer_activity_queue(&activity);
         host.flush_pending_responses()?;
+        drop(host);
+        *usage = std::sync::Arc::try_unwrap(shared_usage)
+            .map_err(|_| AgentError::new("usage ledger still has active workers"))?
+            .into_inner()
+            .map_err(|_| AgentError::new("usage ledger is poisoned"))?;
         result
     }
 }

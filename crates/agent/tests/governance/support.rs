@@ -1,6 +1,6 @@
 use dowe_agent::native_harness::{
-    Approval, ChildExecutionRequest, HarnessHost, HarnessRole, HarnessStore,
-    ModelSelection, SessionRecord,
+    Approval, ChildExecutionRequest, HarnessHost, HarnessRole, HarnessStore, ModelSelection,
+    SessionRecord,
 };
 use dowe_agent::{AgentError, AgentRequest, AgentResult, AgentServerResponse};
 use dowe_agent_harness::{

@@ -204,7 +204,6 @@ pub(crate) async fn server_response(
                             | EndpointBehavior::HttpReverseProxy(_)
                             | EndpointBehavior::HttpBytes(_)
                             | EndpointBehavior::HttpActionJson(_)
-                            | EndpointBehavior::AgentResponse(_)
                             | EndpointBehavior::StoreActionJson(_)
                             | EndpointBehavior::KvActionJson(_)
                             | EndpointBehavior::VectorActionJson(_)
@@ -290,20 +289,6 @@ pub(crate) async fn server_response(
                                 raw_query,
                                 &headers,
                                 &middleware_context,
-                                cache_mode,
-                            )
-                            .await
-                        }
-                        EndpointBehavior::AgentResponse(response) => {
-                            execute_agent_response(
-                                project,
-                                &project.root,
-                                &matched.endpoint.action,
-                                &response,
-                                &matched.params,
-                                &body,
-                                raw_query,
-                                &headers,
                                 cache_mode,
                             )
                             .await
@@ -414,4 +399,3 @@ pub(crate) async fn server_response(
 
     cors_actual_response(&server.cors, dev_origins, &headers, response)
 }
-

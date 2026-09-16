@@ -1,3 +1,6 @@
+mod agent_workflow;
+pub use agent_workflow::*;
+
 pub use dowe_agent::native_harness::{
     EventPage as AgentEventPage, MAX_EXTENSION_CALLS, MAX_EXTENSION_REQUEST_BYTES,
     MAX_EXTENSION_RESPONSE_BYTES, MAX_EXTENSION_TOOLS, SessionEvent, SessionEventLimits,
@@ -8,11 +11,11 @@ pub use dowe_agent::native_harness::{
 };
 pub use dowe_agent::{
     AgentAuthKind, AgentAuthStore, AgentCodeGraphNodeSummary, AgentCodeGraphSummary, AgentContext,
-    AgentConversation, AgentCredential, AgentCredentialStatus, AgentDesktopEvent,
-    AgentDesktopEventKind, AgentHarnessSummary, AgentImageInput, AgentMessage, AgentMessageContent,
-    AgentMessagePart, AgentModelDefinition, AgentModelDetails, AgentPrepareOptions,
-    AgentPreparedRequest, AgentProviderDefinition, AgentProviderInfo, AgentProviderProtocol,
-    AgentRequest, AgentRequestMetadata, AgentRequestType, AgentServerResponse, AgentSkillSummary,
+    AgentCredential, AgentCredentialStatus, AgentDesktopEvent, AgentDesktopEventKind,
+    AgentHarnessSummary, AgentImageInput, AgentMessage, AgentMessageContent, AgentMessagePart,
+    AgentModelDefinition, AgentModelDetails, AgentPrepareOptions, AgentPreparedRequest,
+    AgentProviderDefinition, AgentProviderInfo, AgentProviderProtocol, AgentRequest,
+    AgentRequestMetadata, AgentRequestType, AgentServerResponse, AgentSkillSummary,
     AgentToolDefinition, AgentToolFunction, AgentUsage, AgentUsageTotals, ImageUrl, ProjectContext,
     PublicExampleResult, PublicExampleSearch, PublicSkill, PublicSkillDocument,
     PublicSkillResourceDocument, ResolvedProviderAuth, ThinkingLevel, agent_model_details,
@@ -21,6 +24,10 @@ pub use dowe_agent::{
 pub use dowe_agent_harness::{
     CheckReport, DetectedMode, Diagnostic, HarnessManifest, HarnessMode, InitOptions, InitReport,
     PlanOptions, PlanReport, PlanState, StatusReport, TddState, ValidationReport,
+};
+pub use dowe_codegraph::clean::{
+    CleanEdge, CleanExplanation, CleanGraph, CleanGraphSnapshot, CleanNode, DomainGraphs, Evidence,
+    Namespace, build_domain_graphs,
 };
 pub use dowe_codegraph::{
     BuildOptions as CodeGraphBuildOptions, CheckOptions as CodeGraphCheckOptions, CodeGraph,
@@ -133,13 +140,6 @@ pub fn handle_agent_mcp_message(
     dowe_agent::handle_mcp_message(root, line)
 }
 
-pub async fn send_agent_request(
-    server_url: &str,
-    request: &AgentRequest,
-) -> dowe_agent::AgentResult<AgentServerResponse> {
-    dowe_agent::send_agent_request(server_url, request).await
-}
-
 pub async fn send_native_agent_request(
     request: &AgentRequest,
     auth: &ResolvedProviderAuth,
@@ -195,7 +195,47 @@ pub fn build_codegraph(
     root: impl AsRef<Path>,
     options: CodeGraphBuildOptions,
 ) -> dowe_codegraph::CodeGraphResult<CodeGraph> {
-    dowe_codegraph::build_codegraph(root, options)
+    let root = root.as_ref().canonicalize().map_err(|error| {
+        dowe_codegraph::CodeGraphError::at_path(root.as_ref(), error.to_string())
+    })?;
+    let mode = options
+        .mode
+        .unwrap_or(dowe_codegraph::detect_codegraph_mode(&root)?);
+    let clean = dowe_codegraph::clean::build_clean_graph(
+        &root,
+        CodeGraphBuildOptions { mode: Some(mode) },
+    )?;
+    Ok(dowe_codegraph::clean::legacy_codegraph_from_clean(
+        &clean, mode, &root,
+    ))
+}
+
+pub fn build_clean_codegraph(
+    root: impl AsRef<Path>,
+    options: CodeGraphBuildOptions,
+) -> dowe_codegraph::CodeGraphResult<CleanGraph> {
+    dowe_codegraph::clean::build_clean_graph(root.as_ref(), options)
+}
+
+pub fn check_clean_codegraph(
+    root: impl AsRef<Path>,
+    options: CodeGraphCheckOptions,
+) -> dowe_codegraph::CodeGraphResult<dowe_codegraph::CheckReport> {
+    dowe_codegraph::clean::check_clean_codegraph(root.as_ref(), options)
+}
+
+pub fn explain_clean_codegraph_node(
+    root: impl AsRef<Path>,
+    selector: &str,
+    options: CodeGraphBuildOptions,
+) -> dowe_codegraph::CodeGraphResult<CleanExplanation> {
+    dowe_codegraph::explain_clean_node(root.as_ref(), selector, options)
+}
+
+pub fn refresh_persistent_clean_codegraph(
+    root: impl AsRef<Path>,
+) -> dowe_codegraph::CodeGraphResult<CleanGraphSnapshot> {
+    dowe_codegraph::clean::refresh_persistent_clean_codegraph(root.as_ref())
 }
 
 pub fn check_codegraph(

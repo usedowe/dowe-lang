@@ -240,7 +240,7 @@ fn user_prompt(
             "userPrompt": prompt,
             "language": language,
             "codegraphSummary": codegraph,
-            "tokenPolicy": "Use summaries only. Do not ask for full source unless a specific file is required.",
+            "tokenPolicy": "Use summaries only. Do not ask for full source unless a specific file is required. Treat stale or truncated CodeGraph context as a reason to request a focused read or refresh before committing to a change.",
             "output": {
                 "clarificationNeeded": "boolean",
                 "requestedReferenceImage": "boolean",
@@ -282,7 +282,7 @@ fn user_prompt(
             "skills": skills,
             "codegraphSummary": codegraph,
             "tokenPolicy": "Use skill summaries and focused CodeGraph nodes. Request files only when required.",
-                "impactPolicy": "Before proposing or making edits, inspect the bounded CodeGraph incoming/outgoing dependencies and impact set; do not skip impact analysis.",
+                "impactPolicy": "Before proposing or making edits, inspect the bounded CodeGraph incoming/outgoing dependencies and impact set; do not skip impact analysis. Treat navigationTruncated or impactTruncated as incomplete evidence, and use each node's evidence field when deciding whether a relationship is compiler-verified, inferred, assumed, or unknown.",
             "output": {
                 "steps": "array",
                 "toolCalls": "array",

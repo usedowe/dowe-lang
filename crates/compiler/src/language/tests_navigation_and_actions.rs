@@ -76,6 +76,16 @@ fn document_symbols_include_routes_and_handlers() {
 }
 
 #[test]
+fn document_symbols_do_not_promote_declarations_inside_unknown_syntax() {
+    let document = LanguageDocument {
+        path: Path::new("/project/main.dowe").to_path_buf(),
+        source: "unsupported_wrapper\n  handler forged\n".to_string(),
+    };
+
+    assert!(document_symbols(Path::new("/project"), &document).is_empty());
+}
+
+#[test]
 fn import_completions_use_project_root_aliases() {
     let root = tempdir().expect("tempdir");
     fs::create_dir_all(root.path().join("views/layouts")).expect("layouts");
@@ -247,4 +257,3 @@ fn code_actions_skip_builtins_and_local_symbols() {
     assert!(code_actions_at(root.path(), &document, 3, 4).is_empty());
     assert!(code_actions_at(root.path(), &document, 3, 18).is_empty());
 }
-

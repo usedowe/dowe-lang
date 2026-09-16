@@ -49,6 +49,90 @@ impl HarnessTools {
 
     pub fn execute_parallel_read(&self, call: &ToolCall) -> AgentResult<Value> {
         match call.name.as_str() {
+            "search_codegraph" => {
+                let args: CodeGraphSearchArgs = serde_json::from_value(call.arguments.clone())?;
+                let graph = self.clean_codegraph()?;
+                let scope = parse_codegraph_scope(&args.scope)?;
+                Ok(serde_json::to_value(
+                    dowe_codegraph::clean::GraphQuery {
+                        kind: dowe_codegraph::clean::QueryKind::Search,
+                        value: args.query,
+                        namespace: scope,
+                        max_nodes: args.limit,
+                        max_depth: args.depth,
+                    }
+                    .execute(&graph),
+                )?)
+            }
+            "get_node" => {
+                let args: CodeGraphNodeArgs = serde_json::from_value(call.arguments.clone())?;
+                let graph = self.clean_codegraph()?;
+                let node = graph.node(&args.id).ok_or_else(|| {
+                    AgentError::new(format!("CodeGraph node `{}` was not found", args.id))
+                })?;
+                Ok(json!({"node": node}))
+            }
+            "get_source" => {
+                let args: CodeGraphSourceArgs = serde_json::from_value(call.arguments.clone())?;
+                let graph = self.clean_codegraph()?;
+                let node = graph.node(&args.id).ok_or_else(|| {
+                    AgentError::new(format!("CodeGraph node `{}` was not found", args.id))
+                })?;
+                let path = node.path.clone().ok_or_else(|| {
+                    AgentError::new(format!("CodeGraph node `{}` has no source path", args.id))
+                })?;
+                let source = self.read(&path, args.offset, args.limit)?;
+                Ok(json!({"id": args.id, "path": path, "source": source}))
+            }
+            "get_dependencies" | "get_consumers" => {
+                let args: CodeGraphNodeArgs = serde_json::from_value(call.arguments.clone())?;
+                let graph = self.clean_codegraph()?;
+                let kind = if call.name == "get_dependencies" {
+                    dowe_codegraph::clean::QueryKind::Dependencies
+                } else {
+                    dowe_codegraph::clean::QueryKind::Consumers
+                };
+                let result = dowe_codegraph::clean::GraphQuery {
+                    kind,
+                    value: args.id.clone(),
+                    namespace: None,
+                    max_nodes: args.limit,
+                    max_depth: args.depth,
+                }
+                .execute(&graph);
+                Ok(json!({"id": args.id, "nodes": result.nodes, "edges": result.edges, "truncated": result.truncated}))
+            }
+            "get_related" | "get_impact" => {
+                let args: CodeGraphNodeArgs = serde_json::from_value(call.arguments.clone())?;
+                let graph = self.clean_codegraph()?;
+                let kind = if call.name == "get_related" {
+                    dowe_codegraph::clean::QueryKind::Related
+                } else {
+                    dowe_codegraph::clean::QueryKind::Impact
+                };
+                let result = dowe_codegraph::clean::GraphQuery {
+                    kind,
+                    value: args.id.clone(),
+                    namespace: None,
+                    max_nodes: args.limit,
+                    max_depth: args.depth,
+                }
+                .execute(&graph);
+                Ok(json!({"id": args.id, "nodes": result.nodes, "edges": result.edges, "truncated": result.truncated}))
+            }
+            "find_component" => {
+                let args: ComponentLookupArgs = serde_json::from_value(call.arguments.clone())?;
+                let results = crate::component_contracts::component_summaries(&args.name, 16);
+                Ok(json!({"query": args.name, "results": results, "detail": false}))
+            }
+            "get_component_contract" => {
+                let args: ComponentLookupArgs = serde_json::from_value(call.arguments.clone())?;
+                let contract = crate::component_contracts::component_contract(&args.name)
+                    .ok_or_else(|| {
+                        AgentError::new(format!("unknown Dowe component `{}`", args.name))
+                    })?;
+                Ok(json!({"contract": contract, "detail": true}))
+            }
             "convert_svg" => {
                 let args: SvgConversionArgs = serde_json::from_value(call.arguments.clone())?;
                 self.convert_svg(&args)
@@ -128,74 +212,9 @@ impl HarnessTools {
         }
     }
 
-    fn convert_svg(&self, args: &SvgConversionArgs) -> AgentResult<Value> {
-        let original_colors = match args.colors.as_str() {
-            "original" => true,
-            "tokens" => false,
-            _ => {
-                return Err(AgentError::new(
-                    "convert_svg colors must be original or tokens",
-                ));
-            }
-        };
-        match args.format.as_str() {
-            "source" => {}
-            "data" if original_colors => {}
-            "data" => {
-                return Err(AgentError::new(
-                    "convert_svg format data requires colors original",
-                ));
-            }
-            _ => {
-                return Err(AgentError::new("convert_svg format must be source or data"));
-            }
-        }
-        if args.path == "agents" || args.path.starts_with("agents/") {
-            return Err(AgentError::new(
-                "private, generated or instruction path is not application context",
-            ));
-        }
-        let path = self.path(&args.path)?;
-        if !path
-            .extension()
-            .and_then(|extension| extension.to_str())
-            .is_some_and(|extension| extension.eq_ignore_ascii_case("svg"))
-        {
-            return Err(AgentError::new(
-                "convert_svg path must have a .svg extension",
-            ));
-        }
-        let metadata = fs::metadata(&path)?;
-        if !metadata.is_file() {
-            return Err(AgentError::new("convert_svg path must be a file"));
-        }
-        if metadata.len() > 262_144 {
-            return Err(AgentError::new("convert_svg input exceeds 262144 bytes"));
-        }
-        let source = fs::read_to_string(&path)?;
-        let content = match args.format.as_str() {
-            "source" => dowe_stdlib::convert_svg(&source, original_colors)
-                .map_err(|error| AgentError::new(error.to_string()))?,
-            "data" => dowe_stdlib::convert_svg_data(&source)
-                .map_err(|error| AgentError::new(error.to_string()))?
-                .as_str()
-                .ok_or_else(|| AgentError::new("convert_svg data result was not text"))?
-                .to_string(),
-            _ => unreachable!("format was validated above"),
-        };
-        let result = json!({
-            "status": "converted",
-            "path": args.path,
-            "colors": args.colors,
-            "format": args.format,
-            "content": self.redactor.text(&content),
-        });
-        if serde_json::to_vec(&result)?.len() > self.config.max_output_bytes {
-            return Err(AgentError::new(
-                "convert_svg output exceeds the harness output budget; use a smaller SVG",
-            ));
-        }
-        Ok(result)
+    fn clean_codegraph(&self) -> AgentResult<dowe_codegraph::clean::CleanGraph> {
+        dowe_codegraph::clean::build_clean_graph(self.root.as_path(), Default::default())
+            .map_err(|error| AgentError::new(error.to_string()))
     }
 
     pub fn execute_skill(&self, call: &ToolCall) -> AgentResult<Value> {
@@ -369,6 +388,60 @@ impl HarnessTools {
                 json!({"path":{"type":"string","description":"Project-relative path to a .svg file."},"colors":{"type":"string","enum":["original","tokens"],"default":"original"},"format":{"type":"string","enum":["source","data"],"default":"source"}}),
                 &["path"],
             ),
+            definition(
+                "find_component",
+                "Find built-in components by name. First query only returns each component name and a short description; request get_component_contract after selecting one.",
+                json!({"name":{"type":"string","minLength":1,"maxLength":128}}),
+                &["name"],
+            ),
+            definition(
+                "get_component_contract",
+                "Return the authoritative second-stage contract for one built-in component: name, validated props, allowed values, and a minimal Dowe example.",
+                json!({"name":{"type":"string","minLength":1,"maxLength":128}}),
+                &["name"],
+            ),
+            definition(
+                "search_codegraph",
+                "Search the deterministic unified full-stack CodeGraph. Results are bounded and can be scoped to frontend, backend, shared, product, design, asset, i18n, contract, or verification.",
+                json!({"query":{"type":"string","maxLength":256},"scope":{"type":"string","enum":["all","frontend","backend","shared","product","design","asset","i18n","contract","verification"],"default":"all"},"limit":{"type":"integer","minimum":1,"maximum":128,"default":10},"depth":{"type":"integer","minimum":0,"maximum":8,"default":0}}),
+                &["query"],
+            ),
+            definition(
+                "get_node",
+                "Resolve one exact CodeGraph node after search. Returns metadata only; request source separately through a bounded file read.",
+                json!({"id":{"type":"string","maxLength":256},"limit":{"type":"integer","minimum":1,"maximum":128,"default":10},"depth":{"type":"integer","minimum":0,"maximum":8,"default":0}}),
+                &["id"],
+            ),
+            definition(
+                "get_source",
+                "Read a bounded source page for one exact CodeGraph node after resolving its metadata.",
+                json!({"id":{"type":"string","maxLength":256},"offset":{"type":"integer","minimum":1,"default":1},"limit":{"type":"integer","minimum":1,"maximum":1000,"default":200}}),
+                &["id"],
+            ),
+            definition(
+                "get_dependencies",
+                "Return bounded outgoing CodeGraph dependencies and a truncated flag for one exact node. Incomplete results do not prove a contained change.",
+                json!({"id":{"type":"string","maxLength":256},"limit":{"type":"integer","minimum":1,"maximum":128,"default":10}}),
+                &["id"],
+            ),
+            definition(
+                "get_consumers",
+                "Return bounded incoming CodeGraph consumers and a truncated flag for one exact node. Incomplete results do not prove a contained change.",
+                json!({"id":{"type":"string","maxLength":256},"limit":{"type":"integer","minimum":1,"maximum":128,"default":10}}),
+                &["id"],
+            ),
+            definition(
+                "get_related",
+                "Traverse bounded CodeGraph relations around one exact node.",
+                json!({"id":{"type":"string","maxLength":256},"limit":{"type":"integer","minimum":1,"maximum":128,"default":10},"depth":{"type":"integer","minimum":1,"maximum":8,"default":2}}),
+                &["id"],
+            ),
+            definition(
+                "get_impact",
+                "Analyze bounded transitive change impact before an edit. Check truncated before interpreting completeness; node evidence can be verified, inferred, assumed or unknown.",
+                json!({"id":{"type":"string","maxLength":256},"limit":{"type":"integer","minimum":1,"maximum":128,"default":10},"depth":{"type":"integer","minimum":1,"maximum":8,"default":4}}),
+                &["id"],
+            ),
         ];
         if role == HarnessRole::Execute {
             let skill_contract = "Logical skill id returned in get_skill's id; never use the hash. Hashes are integrity metadata only.";
@@ -388,6 +461,18 @@ impl HarnessTools {
                 "Validate the current Dowe project with the compiler and the native UI quality audit. Read-only; compiler diagnostics, actionable quality findings, and advisory default-first warnings are returned as evidence.",
                 json!({"scope":{"type":"string","enum":["project","views"],"default":"project"}}),
                 &[],
+            ));
+            tools.push(definition(
+                "execute_browser_actions",
+                "Execute bounded navigate/click/fill/press actions through an explicitly loopback Chrome DevTools Protocol endpoint. Every action requires host approval and returns per-action plus DOM hash evidence.",
+                json!({"cdp_endpoint":{"type":"string","description":"Loopback ws:// or http:// CDP endpoint with an explicit port."},"actions":{"type":"array","minItems":1,"maxItems":128,"items":{"type":"object"}},"reason":{"type":"string","maxLength":1024}}),
+                &["cdp_endpoint", "actions", "reason"],
+            ));
+            tools.push(definition(
+                "run_validation",
+                "Run one explicitly declared, allowlisted validation command. The command is executed as argv without shell expansion and remains read-only.",
+                json!({"command":{"type":"string","maxLength":4096},"reason":{"type":"string","maxLength":1024}}),
+                &["command", "reason"],
             ));
             if images {
                 tools.push(definition(

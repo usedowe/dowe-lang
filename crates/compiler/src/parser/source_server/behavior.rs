@@ -24,13 +24,6 @@ fn http_endpoint_behavior(node: &SourceNode) -> DoweResult<Option<EndpointBehavi
             cookies: return_cookies(node)?,
         })));
     }
-    if let Some(upstream) = return_reference_prop(node, "agent")? {
-        let request = return_reference_prop(node, "request")?
-            .ok_or_else(|| node_error(node, "agent response must declare `request` binding"))?;
-        return Ok(Some(EndpointBehavior::AgentResponse(
-            AgentResponseEndpoint { upstream, request },
-        )));
-    }
     if let Some(value) = return_json_value(node) {
         if !returns_created_json(node) {
             return Ok(Some(EndpointBehavior::HttpActionJson(

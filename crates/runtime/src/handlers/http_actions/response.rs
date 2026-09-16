@@ -24,22 +24,6 @@ async fn http_result_response(result: HttpActionResult) -> Response {
     }
 }
 
-async fn agent_proxy_response(request: Value, response: reqwest::Response) -> Response {
-    let status = status_from_reqwest(response.status());
-    match response.bytes().await {
-        Ok(body) if status.is_success() => json_response(
-            StatusCode::OK,
-            agent_http_success(request, json_from_bytes(&body)),
-        ),
-        Ok(body) => json_response(status, openrouter_error(json_from_bytes(&body))),
-        Err(_) => json_error(
-            StatusCode::BAD_GATEWAY,
-            "http_error",
-            "Outbound HTTP response failed",
-        ),
-    }
-}
-
 fn body_response(status: StatusCode, content_type: Option<String>, body: Bytes) -> Response {
     let mut response = (status, body).into_response();
     if let Some(content_type) = content_type {
@@ -214,4 +198,3 @@ fn http_binding_json(
     }
     Value::Object(output)
 }
-

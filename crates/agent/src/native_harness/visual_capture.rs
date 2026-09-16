@@ -260,10 +260,16 @@ impl HarnessTools {
                 "--hide-scrollbars",
                 "--disable-extensions",
                 "--disable-background-networking",
+                "--disable-component-update",
+                "--disable-sync",
+                "--disable-crash-reporter",
+                "--disable-breakpad",
+                "--disable-default-apps",
                 "--no-first-run",
                 "--no-default-browser-check",
                 &format!("--window-size={width},{height}"),
                 "--run-all-compositor-stages-before-draw",
+                "--virtual-time-budget=1000",
             ])
             .arg(format!("--user-data-dir={}", profile.display()))
             .arg("--force-device-scale-factor=1")

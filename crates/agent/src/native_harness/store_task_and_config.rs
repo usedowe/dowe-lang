@@ -47,6 +47,10 @@ impl HarnessStore {
         &self.root
     }
 
+    pub(crate) fn for_project_root(&self, root: impl AsRef<Path>) -> AgentResult<Self> {
+        Self::new(self.base.parent().ok_or_else(|| AgentError::new("invalid harness base"))?, root)
+    }
+
     fn directory(&self) -> PathBuf {
         self.base.join(&self.project)
     }

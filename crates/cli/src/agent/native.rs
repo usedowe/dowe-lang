@@ -1,8 +1,8 @@
 use dialoguer::{Confirm, Input, Select, theme::ColorfulTheme};
 use dowe_agent::native_harness::{
     Approval, ClarificationQuestion, HarnessConfig, HarnessHost, HarnessOutcome,
-    HarnessPermissionMode, HarnessRole, HarnessSession, HarnessStore, ModelSelection, Redactor,
-    SessionRecord, compact_harness_session, run_harness_turn,
+    HarnessPermissionMode, HarnessRole, HarnessSession, HarnessStore, ModelSelection,
+    ParallelHarnessHost, ParallelWorker, Redactor, SessionRecord, compact_clean_session,
 };
 use dowe_agent::{
     AgentAuthStore, AgentError, AgentRequest, AgentResult, AgentServerResponse, AgentUsageTotals,
@@ -32,6 +32,7 @@ pub(super) struct NativeSession {
 include!("native_session_lifecycle.rs");
 include!("native_session_commands.rs");
 include!("native_session_run.rs");
+include!("native_session_benchmark.rs");
 
 mod activity;
 mod capabilities;

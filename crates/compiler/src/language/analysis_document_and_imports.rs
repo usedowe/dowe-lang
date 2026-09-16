@@ -1,4 +1,21 @@
 pub fn analyze_document(root: &Path, document: &LanguageDocument) -> Vec<LanguageDiagnostic> {
+    #[cfg(test)]
+    {
+        let root = root.to_path_buf();
+        let document = document.clone();
+        return std::thread::Builder::new()
+            .name("dowe-language-analysis".to_string())
+            .stack_size(256 * 1024 * 1024)
+            .spawn(move || analyze_document_impl(&root, &document))
+            .expect("spawn language analysis")
+            .join()
+            .expect("language analysis thread");
+    }
+    #[cfg(not(test))]
+    analyze_document_impl(root, document)
+}
+
+fn analyze_document_impl(root: &Path, document: &LanguageDocument) -> Vec<LanguageDiagnostic> {
     let normalized_root = document_workspace_root(root, &document.path);
     let mut diagnostics = Vec::new();
     let file = match parse_source_file(&normalized_root, &document.path, document.source.clone()) {
@@ -226,4 +243,3 @@ fn source_surface(file: &SourceFile) -> SourceSurface {
         SourceSurface::Unknown
     }
 }
-

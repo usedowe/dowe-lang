@@ -371,11 +371,13 @@ fn safe_project_path(root: &Path, relative: &str) -> Option<PathBuf> {
     Some(root.join(path))
 }
 fn cache_path(root: &Path) -> PathBuf {
-    root.join(".agents/codegraph").join(CACHE_FILE)
+    root.join(".dowe/agent").join(CACHE_FILE)
 }
 fn read_cache(root: &Path) -> CacheFile {
     let path = cache_path(root);
-    let Ok(bytes) = fs::read(path) else {
+    let bytes =
+        fs::read(&path).or_else(|_| fs::read(root.join(".agents/codegraph").join(CACHE_FILE)));
+    let Ok(bytes) = bytes else {
         return CacheFile {
             version: 1,
             entries: Vec::new(),

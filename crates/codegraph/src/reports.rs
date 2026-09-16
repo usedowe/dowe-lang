@@ -33,6 +33,33 @@ pub(crate) fn write_codegraph_reports(
     })
 }
 
+pub(crate) fn write_clean_codegraph_reports(
+    root: &Path,
+    graph: &crate::clean::CleanGraph,
+    report: &CheckReport,
+) -> CodeGraphResult<WrittenReports> {
+    write_json(root, ".dowe/codegraph/graph.json", graph)?;
+    write_json(root, ".dowe/codegraph/report.json", report)?;
+    write_text(root, ".dowe/codegraph/report.md", &markdown_report(report))?;
+    write_json(
+        root,
+        ".dowe/codegraph/ownership.json",
+        &clean_ownership_report(graph),
+    )?;
+    write_json(
+        root,
+        ".dowe/codegraph/duplication.json",
+        &duplication_report(report),
+    )?;
+    Ok(WrittenReports {
+        graph_path: ".dowe/codegraph/graph.json".into(),
+        report_path: ".dowe/codegraph/report.json".into(),
+        markdown_path: ".dowe/codegraph/report.md".into(),
+        ownership_path: ".dowe/codegraph/ownership.json".into(),
+        duplication_path: ".dowe/codegraph/duplication.json".into(),
+    })
+}
+
 fn markdown_report(report: &CheckReport) -> String {
     let mut content = String::from("# CodeGraph Report\n\n");
     let errors = report
@@ -70,6 +97,22 @@ fn ownership_report(graph: &CodeGraph) -> Vec<serde_json::Value> {
                 "name": node.name,
                 "owner": node.owner,
                 "path": node.path
+            })
+        })
+        .collect()
+}
+
+fn clean_ownership_report(graph: &crate::clean::CleanGraph) -> Vec<serde_json::Value> {
+    graph
+        .nodes()
+        .filter(|node| node.namespace != crate::clean::Namespace::Shared)
+        .map(|node| {
+            serde_json::json!({
+                "id": node.id,
+                "name": node.name,
+                "namespace": node.namespace,
+                "path": node.path,
+                "evidence": node.evidence
             })
         })
         .collect()

@@ -196,7 +196,7 @@ Browsers cannot set upgrade headers, so WebSocket middleware reads `req.query.<n
 values as credentials, use TLS, and avoid logging complete URLs.
 
 ```text
-websocket "/api/v1/agent/ws"
+websocket "/events"
   message ws
     ws request source:"json"
     send ws json:{ event:"started" requestId:request.requestId }

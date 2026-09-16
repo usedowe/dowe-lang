@@ -158,7 +158,7 @@ pub(crate) fn check_bound_persistent_codegraph(
     {
         report.diagnostics.push(drift_diagnostic(
             "codegraph_binding_mismatch",
-            ".agents/codegraph/CURRENT",
+            ".dowe/codegraph/CURRENT",
             "Persisted CodeGraph generation does not match the plan binding.",
         ));
     }
@@ -191,7 +191,7 @@ pub(crate) fn check_bound_persistent_codegraph(
     if persisted_fingerprints != fingerprints {
         report.diagnostics.push(drift_diagnostic(
             "codegraph_manifest_drift",
-            ".agents/codegraph/CURRENT",
+            ".dowe/codegraph/CURRENT",
             "Persisted CodeGraph manifest differs from current project files.",
         ));
     }
@@ -223,7 +223,7 @@ fn validate_persisted_graph(
     if ids.len() != graph.nodes.len() {
         report.diagnostics.push(drift_diagnostic(
             "codegraph_graph_invalid",
-            ".agents/codegraph",
+            ".dowe/codegraph",
             "Persisted CodeGraph contains duplicate node IDs.",
         ));
     }
@@ -231,7 +231,7 @@ fn validate_persisted_graph(
         if !ids.contains(edge.from.as_str()) || !ids.contains(edge.to.as_str()) {
             report.diagnostics.push(drift_diagnostic(
                 "codegraph_graph_invalid",
-                ".agents/codegraph",
+                ".dowe/codegraph",
                 "Persisted CodeGraph contains an edge to a missing node.",
             ));
             break;

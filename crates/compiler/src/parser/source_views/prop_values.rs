@@ -240,4 +240,3 @@ fn used_components(declaration: &ViewDeclaration) -> Vec<String> {
     }
     used
 }
-

@@ -211,13 +211,50 @@ impl HarnessTools {
                         "watchers require an explicit resource and pipe mode",
                     ));
                 }
-                let details = json!({"watch":args.watch,"lifetime":if args.watch {"owning_session"} else {"task"},"shell":shell,"command":args.command,"cwd":args.cwd,"reason":args.reason,"env":self.shell_env(),"stdin":if args.pty {"terminal"} else {"ignore"},"pty":args.pty,"resource":args.resource,"terminal_transcript":"local_only","timeout_ms":self.config.shell_timeout_ms,"max_output_bytes":self.config.max_output_bytes,"warning":"General shell runs with your user permissions and can access files outside the project and the network. This is not a sandbox."});
+                let details = json!({"watch":args.watch,"lifetime":if args.watch {"owning_session"} else {"task"},"shell":shell,"command":args.command,"cwd":args.cwd,"reason":args.reason,"env":self.shell_env()?,"stdin":if args.pty {"terminal"} else {"ignore"},"pty":args.pty,"resource":args.resource,"terminal_transcript":"local_only","timeout_ms":self.config.shell_timeout_ms,"max_output_bytes":self.config.max_output_bytes,"warning":"Shell is constrained to a per-session HOME/TMP sandbox and project cwd; macOS hosts additionally deny network and writes outside the project/sandbox via sandbox-exec."});
                 (None, None, details)
             }
-            "read_file" | "list_files" | "search" | "convert_svg" | "get_skill" => {
+            "run_validation" => {
+                let command = call.arguments["command"]
+                    .as_str()
+                    .ok_or_else(|| AgentError::new("validation command missing"))?;
+                let reason = call.arguments["reason"]
+                    .as_str()
+                    .ok_or_else(|| AgentError::new("validation reason missing"))?;
+                validate_declared_command(command)?;
+                if reason.trim().is_empty() || reason.len() > 1024 {
+                    return Err(AgentError::new("validation reason exceeds limits"));
+                }
+                (None, None, json!({
+                    "command": command,
+                    "reason": reason,
+                    "cwd": self.root,
+                    "policy": "argv-only allowlisted validation; no shell expansion"
+                }))
+            }
+            "read_file"
+            | "list_files"
+            | "search"
+            | "convert_svg"
+            | "get_skill"
+            | "find_component"
+            | "get_component_contract"
+            | "search_codegraph"
+            | "get_node"
+            | "get_source"
+            | "get_dependencies"
+            | "get_consumers"
+            | "get_related"
+            | "get_impact" => {
                 return Ok(None);
             }
             "capture_web_screenshot" => return Ok(Some(self.prepare_screenshot(call, role)?)),
+            "execute_browser_actions" => {
+                let approval = self.prepare_browser_actions(call, role)?;
+                self.pending
+                    .insert(approval.id.clone(), Self::approval_digest(&approval)?);
+                return Ok(Some(approval));
+            }
             _ => return Err(AgentError::new("unknown harness tool")),
         };
         let approval = Approval {
@@ -429,4 +466,5 @@ impl HarnessTools {
             json!({"status":"applied","path":approval.call.arguments["path"],"hash":digest(after.as_bytes())}),
         )
     }
+
 }

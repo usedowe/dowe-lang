@@ -115,18 +115,12 @@ pub fn plan_from_spec(
     }
 
     let implementation_scope = implementation_scope_for(complex_feature);
-    let snapshot = dowe_codegraph::ensure_persistent_codegraph(root)
+    let snapshot = dowe_codegraph::clean::refresh_persistent_clean_codegraph(root)
         .map_err(|error| HarnessError::new(error.to_string()))?;
-    let codegraph_binding =
-        snapshot
-            .generation
-            .clone()
-            .map(|generation| dowe_codegraph::CodeGraphBinding {
-                generation,
-                revision: snapshot.manifest.revision,
-                root: snapshot.manifest.root.clone(),
-                mode: snapshot.manifest.mode,
-            });
+    let codegraph_binding = snapshot
+        .generation
+        .as_ref()
+        .map(|_| dowe_codegraph::clean::clean_binding(&snapshot));
     let governance_task = codegraph_binding
         .clone()
         .map(|binding| {
@@ -240,14 +234,28 @@ pub fn validate_plan(root: impl AsRef<Path>, plan_id: &str) -> HarnessResult<Val
                 });
             }
             ValidationCommandKind::CodegraphCheck => {
-                let report = dowe_codegraph::check_bound_persistent_codegraph(
+                let snapshot = dowe_codegraph::clean::refresh_persistent_clean_codegraph(root)
+                .map_err(|error| HarnessError::new(error.to_string()))?;
+                let current = dowe_codegraph::clean::clean_binding(&snapshot);
+                let expected = state.codegraph_binding.as_ref().ok_or_else(|| {
+                    HarnessError::new("codegraph binding missing from plan state")
+                })?;
+                let mut report = dowe_codegraph::clean::check_clean_codegraph(
                     root,
-                    state.codegraph_binding.as_ref().ok_or_else(|| {
-                        HarnessError::new("codegraph binding missing from plan state")
-                    })?,
                     dowe_codegraph::CheckOptions::default(),
                 )
                 .map_err(|error| HarnessError::new(error.to_string()))?;
+                if &current != expected {
+                    report.diagnostics.push(dowe_codegraph::Diagnostic {
+                        code: "codegraph_binding_mismatch".into(),
+                        severity: dowe_codegraph::DiagnosticSeverity::Error,
+                        path: ".dowe/codegraph/CURRENT".into(),
+                        message: "CleanGraph generation does not match the plan binding.".into(),
+                        action: "Regenerate the plan before validation.".into(),
+                        owner: None,
+                        metric: None,
+                    });
+                }
                 let success = !report.has_errors();
                 commands.push(ValidationCommandEvidence {
                     id: command.id,

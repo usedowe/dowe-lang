@@ -6,3 +6,5 @@ target
 .agents/memory.json
 .agents/memory.lock
 **/.agents/codegraph/
+**/.dowe/codegraph/
+**/.dowe/agent/

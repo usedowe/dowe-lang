@@ -108,6 +108,7 @@ mod tests {
     fn default_round_limit_is_pi_like_and_hard_limit_remains_validated() {
         let config = HarnessConfig::default();
         assert_eq!(config.max_rounds, 64);
+        assert_eq!(config.worker_capacity, 4);
         assert!(config.validate().is_ok());
 
         let mut maximum = config.clone();
@@ -116,6 +117,10 @@ mod tests {
 
         maximum.max_rounds = 129;
         assert!(maximum.validate().is_err());
+
+        let mut capacity = config;
+        capacity.worker_capacity = 33;
+        assert!(capacity.validate().is_err());
     }
 }
 
@@ -191,10 +196,14 @@ impl ModelSelection {
 #[serde(default, deny_unknown_fields)]
 pub struct HarnessConfig {
     pub roles: BTreeMap<HarnessRole, ModelSelection>,
+    /// Optional ordered alternatives used by budget-aware model routing.
+    #[serde(default)]
+    pub model_candidates: BTreeMap<HarnessRole, Vec<dowe_agent_harness::ModelCandidate>>,
     pub capabilities: BTreeMap<String, super::ModelCapabilities>,
     pub providers: crate::provider::ProviderRegistry,
     pub shell: Option<String>,
     pub max_rounds: usize,
+    pub worker_capacity: usize,
     pub max_output_bytes: usize,
     pub context_limit: Option<u64>,
     pub token_budget: u64,
@@ -208,10 +217,12 @@ impl Default for HarnessConfig {
     fn default() -> Self {
         Self {
             roles: BTreeMap::new(),
+            model_candidates: BTreeMap::new(),
             capabilities: BTreeMap::new(),
             providers: crate::provider::ProviderRegistry::default(),
             shell: None,
             max_rounds: 64,
+            worker_capacity: 4,
             max_output_bytes: 32768,
             context_limit: None,
             token_budget: 200000,
@@ -246,6 +257,7 @@ impl HarnessConfig {
     pub fn validate(&self) -> AgentResult<()> {
         self.providers.validate()?;
         if !(1..=128).contains(&self.max_rounds)
+            || !(1..=32).contains(&self.worker_capacity)
             || !(1024..=131072).contains(&self.max_output_bytes)
             || self.token_budget == 0
             || self.duration_seconds == 0
@@ -278,6 +290,27 @@ impl HarnessConfig {
         }
         for selection in self.roles.values() {
             selection.validate_with_registry(&self.providers)?
+        }
+        for candidates in self.model_candidates.values() {
+            if candidates.is_empty() || candidates.len() > 16 {
+                return Err(AgentError::new(
+                    "model candidate lists must contain 1 to 16 entries",
+                ));
+            }
+            for candidate in candidates {
+                ModelSelection::new(&candidate.provider, &candidate.model)
+                    .validate_with_registry(&self.providers)?;
+                if candidate.quality == 0
+                    || candidate
+                        .input_micros_per_million
+                        .is_some_and(|rate| rate > 10_000_000)
+                    || candidate
+                        .output_micros_per_million
+                        .is_some_and(|rate| rate > 10_000_000)
+                {
+                    return Err(AgentError::new("invalid model candidate quality or price"));
+                }
+            }
         }
         Ok(())
     }

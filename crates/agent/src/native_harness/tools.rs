@@ -119,6 +119,7 @@ struct ShellArgs {
 
 include!("tools_construction_and_reads.rs");
 include!("tools_approvals.rs");
+include!("tools_validation.rs");
 include!("tools_write_batch.rs");
 include!("tools_dowe_preflight.rs");
 include!("tools_write_scope.rs");

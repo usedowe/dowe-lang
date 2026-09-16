@@ -7,7 +7,6 @@ mod tests {
 
     include!("client_inference_tests.rs");
     include!("client_codex_tests.rs");
-    include!("client_conversation_tests.rs");
     include!("client_provider_tests.rs");
     include!("client_provider_http_tests.rs");
 

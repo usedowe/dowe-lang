@@ -1,8 +1,5 @@
 use crate::error::AgentResult;
-use dowe_codegraph::{
-    CodeGraphMode, CodeGraphQuery, GraphFreshness, NodeKind, ensure_persistent_codegraph,
-    query_persistent_codegraph,
-};
+use dowe_codegraph::clean::{CleanGraph, CleanNode, GraphQuery, QueryKind};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -16,6 +13,8 @@ pub struct AgentCodeGraphSummary {
     pub relevant_nodes: Vec<AgentCodeGraphNodeSummary>,
     pub navigation: Vec<AgentCodeGraphNodeSummary>,
     pub impact: Vec<AgentCodeGraphNodeSummary>,
+    pub navigation_truncated: bool,
+    pub impact_truncated: bool,
     pub navigation_edges: Vec<String>,
     pub edge_policy: String,
     pub error: Option<String>,
@@ -33,13 +32,14 @@ pub struct AgentCodeGraphNodeSummary {
     pub name: String,
     pub owner: Option<String>,
     pub total_lines: Option<usize>,
+    pub evidence: String,
 }
 
 pub fn summarize_codegraph(
     root: impl AsRef<Path>,
     max_nodes: usize,
 ) -> AgentResult<AgentCodeGraphSummary> {
-    summarize_codegraph_inner(root.as_ref(), None, max_nodes)
+    summarize_clean_codegraph(root.as_ref(), None, max_nodes)
 }
 
 pub fn summarize_codegraph_for(
@@ -47,266 +47,182 @@ pub fn summarize_codegraph_for(
     query: &str,
     max_nodes: usize,
 ) -> AgentResult<AgentCodeGraphSummary> {
-    summarize_codegraph_inner(root.as_ref(), Some(query), max_nodes)
+    summarize_clean_codegraph(root.as_ref(), Some(query), max_nodes)
 }
 
-fn summarize_codegraph_inner(
+fn summarize_clean_codegraph(
     root: &Path,
     query: Option<&str>,
     max_nodes: usize,
 ) -> AgentResult<AgentCodeGraphSummary> {
-    match ensure_persistent_codegraph(root) {
-        Ok(snapshot) => {
-            let freshness = format!("{:?}", snapshot.freshness).to_ascii_lowercase();
-            let stale = matches!(
-                snapshot.freshness,
-                GraphFreshness::Stale | GraphFreshness::Error
-            );
-            let graph = snapshot.graph;
-            let visible_node_ids = graph
-                .nodes
-                .iter()
-                .filter(|node| visible_in_agent_context(node.path.as_deref()))
-                .map(|node| node.id.clone())
-                .collect::<BTreeSet<_>>();
-            let navigation = query_persistent_codegraph(
-                root,
-                CodeGraphQuery {
-                    text: query.unwrap_or_default().to_string(),
-                    limit: max_nodes,
-                    depth: 2,
-                },
-            )
-            .ok();
-            let navigation_nodes = navigation
-                .as_ref()
-                .map(|r| {
-                    r.nodes
-                        .iter()
-                        .filter(|node| visible_in_agent_context(node.path.as_deref()))
-                        .cloned()
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            let navigation_edges = navigation
-                .as_ref()
-                .map(|r| {
-                    r.incoming
-                        .iter()
-                        .chain(r.outgoing.iter())
-                        .filter(|edge| {
-                            visible_node_ids.contains(&edge.from)
-                                && visible_node_ids.contains(&edge.to)
-                        })
-                        .map(|e| format!("{} -> {} ({:?})", e.from, e.to, e.kind))
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            let impact_nodes = navigation
-                .as_ref()
-                .map(|r| {
-                    r.impact
-                        .iter()
-                        .filter(|node| visible_in_agent_context(node.path.as_deref()))
-                        .cloned()
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            let mode = match graph.mode {
-                CodeGraphMode::Dowe => "dowe",
-                CodeGraphMode::Project => "project",
+    let (graph, freshness, revision, stale) =
+        match dowe_codegraph::clean::read_persistent_clean_codegraph(root) {
+            Ok(snapshot) => {
+                let stale = matches!(snapshot.freshness, dowe_codegraph::GraphFreshness::Stale);
+                let graph = if stale {
+                    dowe_codegraph::clean::build_clean_graph(root, Default::default())
+                        .map_err(|error| crate::AgentError::new(error.to_string()))?
+                } else {
+                    snapshot.graph
+                };
+                (
+                    graph,
+                    format!("{:?}", snapshot.freshness).to_lowercase(),
+                    snapshot.manifest.revision,
+                    stale,
+                )
             }
-            .to_string();
-            let terms = query.map(search_terms).unwrap_or_default();
-            let mut scored = graph
-                .nodes
-                .iter()
-                .filter_map(|node| {
-                    let score = if query.is_some() {
-                        node_score(
-                            &terms,
-                            &node.kind,
-                            node.path.as_deref(),
-                            &node.name,
-                            node.owner.as_deref(),
-                        )
-                    } else {
-                        usize::from(relevant_node(&node.kind, node.path.as_deref()))
-                    };
-                    (score > 0).then(|| {
-                        (
-                            score,
-                            AgentCodeGraphNodeSummary {
-                                kind: format!("{:?}", node.kind).to_ascii_lowercase(),
-                                language: node.language.clone(),
-                                path: node.path.clone(),
-                                name: node.name.clone(),
-                                owner: node.owner.clone(),
-                                total_lines: node
-                                    .metrics
-                                    .as_ref()
-                                    .map(|metrics| metrics.total_lines),
-                            },
-                        )
-                    })
-                })
-                .collect::<Vec<_>>();
-            scored.sort_by(|(left_score, left), (right_score, right)| {
-                right_score.cmp(left_score).then_with(|| {
-                    (
-                        left.path.as_deref().unwrap_or_default(),
-                        &left.name,
-                        left.owner.as_deref().unwrap_or_default(),
-                    )
-                        .cmp(&(
-                            right.path.as_deref().unwrap_or_default(),
-                            &right.name,
-                            right.owner.as_deref().unwrap_or_default(),
-                        ))
-                })
-            });
-            let nodes = scored
-                .into_iter()
-                .take(max_nodes)
-                .map(|(_, node)| node)
-                .collect();
-
-            Ok(AgentCodeGraphSummary {
-                mode,
-                node_count: graph.nodes.len(),
-                edge_count: graph.edges.len(),
-                relevant_nodes: nodes,
-                navigation: navigation_nodes
-                    .into_iter()
-                    .map(node_summary)
-                    .take(max_nodes)
-                    .collect(),
-                impact: impact_nodes
-                    .into_iter()
-                    .map(node_summary)
-                    .take(max_nodes)
-                    .collect(),
-                navigation_edges: navigation_edges.into_iter().take(max_nodes * 2).collect(),
-                edge_policy: "derived_only_existing_extractors".to_string(),
-                error: snapshot.error,
-                freshness,
-                revision: snapshot.manifest.revision,
-                stale,
-            })
-        }
-        Err(error) => Ok(AgentCodeGraphSummary {
-            mode: "unknown".to_string(),
-            node_count: 0,
-            edge_count: 0,
-            relevant_nodes: Vec::new(),
-            navigation: Vec::new(),
-            impact: Vec::new(),
-            navigation_edges: Vec::new(),
-            edge_policy: "derived_only_existing_extractors".to_string(),
-            error: Some(error.to_string()),
-            freshness: "error".to_string(),
-            revision: 0,
-            stale: true,
-        }),
-    }
-}
-
-fn visible_in_agent_context(path: Option<&str>) -> bool {
-    path.is_none_or(|path| {
-        !matches!(path, ".agents" | "agents" | ".dowe" | "dowe")
-            && !path.starts_with(".agents/")
-            && !path.starts_with("agents/")
-            && !path.starts_with(".dowe/")
-            && !path.starts_with("dowe/")
+            Err(_) => (
+                dowe_codegraph::clean::build_clean_graph(root, Default::default())
+                    .map_err(|error| crate::AgentError::new(error.to_string()))?,
+                "ephemeral".into(),
+                0,
+                false,
+            ),
+        };
+    let limit = max_nodes.max(1);
+    let navigation_result = query_nodes(&graph, query, limit);
+    let navigation_truncated = navigation_result.truncated;
+    let navigation = navigation_result.nodes;
+    let impact_result = navigation
+        .first()
+        .map(|node| {
+            GraphQuery {
+                kind: QueryKind::Impact,
+                value: node.id.clone(),
+                namespace: None,
+                max_nodes: limit,
+                max_depth: 2,
+            }
+            .execute(&graph)
+        })
+        .unwrap_or_else(|| dowe_codegraph::clean::GraphResult {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            truncated: false,
+        });
+    let navigation_ids = navigation
+        .iter()
+        .map(|node| node.id.as_str())
+        .collect::<BTreeSet<_>>();
+    let navigation_edges = graph
+        .edges()
+        .filter(|edge| {
+            navigation_ids.contains(edge.source.as_str())
+                || navigation_ids.contains(edge.target.as_str())
+        })
+        .take(limit * 2)
+        .map(|edge| format!("{} -> {} ({})", edge.source, edge.target, edge.relation))
+        .collect();
+    Ok(AgentCodeGraphSummary {
+        mode: "clean".into(),
+        node_count: graph.nodes().count(),
+        edge_count: graph.edges().count(),
+        relevant_nodes: navigation.iter().map(node_summary).collect(),
+        navigation: navigation.iter().map(node_summary).collect(),
+        impact: impact_result.nodes.iter().map(node_summary).collect(),
+        navigation_truncated,
+        impact_truncated: impact_result.truncated,
+        navigation_edges,
+        edge_policy: "clean_bounded_graph".into(),
+        error: None,
+        freshness,
+        revision,
+        stale,
     })
 }
 
-fn node_summary(node: dowe_codegraph::Node) -> AgentCodeGraphNodeSummary {
-    AgentCodeGraphNodeSummary {
-        kind: format!("{:?}", node.kind).to_ascii_lowercase(),
-        language: node.language,
-        path: node.path,
-        name: node.name,
-        owner: node.owner,
-        total_lines: node.metrics.map(|m| m.total_lines),
+fn query_nodes(
+    graph: &CleanGraph,
+    query: Option<&str>,
+    limit: usize,
+) -> dowe_codegraph::clean::GraphResult {
+    let Some(query) = query else {
+        let nodes = graph.nodes().take(limit).cloned().collect::<Vec<_>>();
+        return dowe_codegraph::clean::GraphResult {
+            truncated: graph.nodes().nth(limit).is_some(),
+            nodes,
+            edges: Vec::new(),
+        };
+    };
+
+    // Prompts are intent descriptions, not exact node selectors. Use the
+    // deterministic graph search for each meaningful term and rank nodes by
+    // the number of matching terms so the agent receives focused context.
+    let terms = query
+        .split(|character: char| !character.is_alphanumeric() && character != '_')
+        .map(str::trim)
+        .filter(|term| term.chars().count() >= 3)
+        .map(str::to_lowercase)
+        .collect::<BTreeSet<_>>();
+    if terms.is_empty() {
+        return dowe_codegraph::clean::GraphResult {
+            nodes: graph.nodes().take(limit).cloned().collect(),
+            edges: Vec::new(),
+            truncated: false,
+        };
     }
-}
 
-fn search_terms(query: &str) -> Vec<String> {
-    const STOP_WORDS: &[&str] = &[
-        "and",
-        "the",
-        "for",
-        "with",
-        "update",
-        "implement",
-        "create",
-        "change",
-        "add",
-        "una",
-        "para",
-        "con",
-        "actualiza",
-        "implementa",
-        "crea",
-        "cambia",
-        "agrega",
-    ];
-    query
-        .to_ascii_lowercase()
-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '-')
-        .filter(|term| term.len() > 2 && !STOP_WORDS.contains(term))
-        .map(str::to_string)
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect()
-}
-
-fn node_score(
-    terms: &[String],
-    kind: &NodeKind,
-    path: Option<&str>,
-    name: &str,
-    owner: Option<&str>,
-) -> usize {
-    let path = path.unwrap_or_default().to_ascii_lowercase();
-    let name = name.to_ascii_lowercase();
-    let owner = owner.unwrap_or_default().to_ascii_lowercase();
-    let mut score = terms
-        .iter()
-        .map(|term| {
-            usize::from(path.contains(term)) * 8
-                + usize::from(name.contains(term)) * 6
-                + usize::from(owner.contains(term)) * 3
+    let mut scored = graph
+        .nodes()
+        .filter_map(|node| {
+            let haystack = format!("{} {} {}", node.id, node.name, node.kind).to_lowercase();
+            let score = terms
+                .iter()
+                .filter(|term| haystack.contains(term.as_str()))
+                .count();
+            (score > 0).then_some((score, node))
         })
-        .sum();
-    if matches!(path.as_str(), "main.dowe" | "theme.dowe") {
-        score += 1;
+        .collect::<Vec<_>>();
+    scored.sort_by(|(left_score, left), (right_score, right)| {
+        right_score
+            .cmp(left_score)
+            .then_with(|| left.id.cmp(&right.id))
+    });
+    let total_matches = scored.len();
+    let nodes = scored
+        .into_iter()
+        .take(limit)
+        .map(|(_, node)| node.clone())
+        .collect::<Vec<_>>();
+
+    // Preserve the old exact-search behavior for unusual selectors that do
+    // not tokenize cleanly, while still keeping the result bounded.
+    if nodes.is_empty() {
+        return GraphQuery {
+            kind: QueryKind::Search,
+            value: query.into(),
+            namespace: None,
+            max_nodes: limit,
+            max_depth: 2,
+        }
+        .execute(graph);
     }
-    if matches!(
-        kind,
-        NodeKind::Spec | NodeKind::Contract | NodeKind::Acceptance
-    ) && terms
-        .iter()
-        .any(|term| matches!(term.as_str(), "spec" | "contract" | "acceptance"))
-    {
-        score += 2;
+    dowe_codegraph::clean::GraphResult {
+        nodes,
+        edges: Vec::new(),
+        truncated: total_matches > limit,
     }
-    score
 }
 
-fn relevant_node(kind: &NodeKind, path: Option<&str>) -> bool {
-    match kind {
-        NodeKind::Crate | NodeKind::Spec | NodeKind::Contract | NodeKind::Acceptance => true,
-        NodeKind::File => path.is_some_and(|path| {
-            path.ends_with(".dowe")
-                || path.contains("agent")
-                || path.contains("codegraph")
-                || path.contains("cli/src/agent")
-                || path.contains("docs/development")
-                || path.contains("docs/server")
-                || path.contains("dowe-llm")
-        }),
-        _ => false,
+fn node_summary(node: &CleanNode) -> AgentCodeGraphNodeSummary {
+    AgentCodeGraphNodeSummary {
+        kind: node.kind.clone(),
+        language: node
+            .path
+            .as_deref()
+            .and_then(|path| path.rsplit_once('.').map(|(_, extension)| extension.into()))
+            .unwrap_or_else(|| "unknown".into()),
+        path: node.path.clone(),
+        name: node.name.clone(),
+        owner: None,
+        total_lines: node
+            .start_line
+            .zip(node.end_line)
+            .map(|(start, end)| end.saturating_sub(start) as usize + 1),
+        evidence: serde_json::to_string(&node.evidence)
+            .unwrap_or_else(|_| "unknown".into())
+            .trim_matches('"')
+            .to_string(),
     }
 }

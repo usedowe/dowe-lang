@@ -4,8 +4,6 @@ struct ParsedAgentChatArgs {
     prompt: String,
     provider: Option<String>,
     api_key: Option<String>,
-    server_url: String,
-    uses_legacy_server: bool,
     json_output: bool,
     options: AgentPrepareOptions,
 }
@@ -36,17 +34,8 @@ mod tests {
             structured.options.request_type,
             Some(AgentRequestType::Clarify)
         );
-        let legacy = parse_agent_args(
-            &[
-                "--server".into(),
-                "http://localhost:1234".into(),
-                "hola".into(),
-            ],
-            true,
-        )
-        .unwrap();
-        assert!(legacy.uses_legacy_server);
-        assert_eq!(legacy.options.request_type, None);
+        assert!(parse_agent_args(&["--server".into(), "http://localhost:1234".into()], true)
+            .is_err());
     }
 
     #[test]

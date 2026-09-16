@@ -31,7 +31,7 @@ fn aggregate_openai(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> 
                 let delta = choice.get("delta").or_else(|| choice.get("message"));
                 if let Some(content) = delta.and_then(|value| value.get("content")) {
                     let mut blocks = Vec::new();
-                    crate::conversation::text_blocks(content, &mut blocks);
+                    crate::response::text_blocks(content, &mut blocks);
                     text.push_str(&blocks.concat());
                 }
                 if let Some(calls) = delta
@@ -337,4 +337,3 @@ fn aggregate_pi_messages(events: Vec<(Option<String>, Value)>) -> AgentResult<Va
         json!({"choices": [{"message": {"role": "assistant", "content": text}, "finish_reason": "stop"}]}),
     )
 }
-

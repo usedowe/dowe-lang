@@ -1,6 +1,6 @@
-use super::support::{attach_child, binding, child_request, AdapterHost};
+use super::support::{AdapterHost, attach_child, binding, child_request};
 use dowe_agent::native_harness::{
-    run_child_turn, HarnessConfig, HarnessOutcome, HarnessRole, HarnessStore, SessionRecord,
+    HarnessConfig, HarnessOutcome, HarnessRole, HarnessStore, SessionRecord, run_child_turn,
 };
 use dowe_agent_harness::{AgentExecutionKind, AgentRecord, AgentRole, CodeGraphBinding};
 use serde_json::json;

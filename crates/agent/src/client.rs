@@ -16,8 +16,6 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-include!("client_server_request.rs");
-
 #[path = "client_stream.rs"]
 mod streaming;
 pub use streaming::NativeRequestEvent;

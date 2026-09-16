@@ -49,6 +49,9 @@ fn advanced_commands_remain_explicit_without_entering_the_suggestion_list() {
         "/plan inspect the project",
         "/research find the entrypoint",
         "/review inspect the change",
+        "/build-plan feature.json",
+        "/draft-plan feature Build login",
+        "/resume-workflow feature 7",
         "/memory status",
         "/permissions full",
     ] {

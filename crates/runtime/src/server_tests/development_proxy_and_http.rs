@@ -23,19 +23,7 @@ main
         const body value:req.json
         http upstream method:"post" base:env.OPENROUTER_BASE_URL path:"/api/v1/chat/completions" bearer:env.OPENROUTER_API_KEY json:body mode:"proxy"
         return proxy:upstream
-    route "/api/v1/agent"
-      method POST async req
-        const request value:req.json
-        agent chat source:"chat" request:request
-        http upstream method:"post" base:env.OPENROUTER_BASE_URL path:"/api/v1/chat/completions" bearer:env.OPENROUTER_API_KEY json:chat mode:"json"
-        return agent:upstream request:request
-    websocket "/api/v1/agent/ws"
-      message ws
-        ws request source:"json"
-        send ws json:{ event:"started" requestId:request.requestId requestType:request.requestType model:request.model payload:{ stream:request.stream } }
-        agent chat source:"chat" request:request
-        http upstream method:"post" base:env.OPENROUTER_BASE_URL path:"/api/v1/chat/completions" bearer:env.OPENROUTER_API_KEY json:chat mode:"proxy"
-        bridge sse:upstream to:ws requestId:request.requestId requestType:request.requestType model:request.model"#,
+        "#,
     )
     .expect("server");
     let project = compile_dev(temp.path()).expect("project");
@@ -62,82 +50,9 @@ main
     let chat = chat.json::<serde_json::Value>().await.expect("chat json");
     assert_eq!(chat["choices"][0]["message"]["content"], "mock message");
 
-    let agent = client
-        .post(format!("{backend}/api/v1/agent"))
-        .json(&json!({
-            "requestId":"req-1",
-            "requestType":"clarify",
-            "model":"openai/test",
-            "messages":[{"role":"user","content":"hello"}],
-            "stream":false
-        }))
-        .send()
-        .await
-        .expect("agent")
-        .json::<serde_json::Value>()
-        .await
-        .expect("agent json");
-    assert_eq!(agent["requestId"], "req-1");
-    assert_eq!(agent["requestType"], "clarify");
-    assert_eq!(
-        agent["payload"]["choices"][0]["message"]["content"],
-        "mock message"
-    );
-
     let seen = upstream.requests().await;
-    assert_eq!(seen.len(), 2);
+    assert_eq!(seen.len(), 1);
     assert_eq!(seen[0].authorization, Some("Bearer test-token".to_string()));
-    assert_eq!(seen[1].body["metadata"]["dowe_request_type"], "clarify");
-    assert!(seen[1].body.get("requestId").is_none());
-    assert!(seen[1].body.get("requestType").is_none());
-
-    let before_stream_reject = upstream.requests().await.len();
-    let rejected = client
-        .post(format!("{backend}/api/v1/agent"))
-        .json(&json!({
-            "requestId":"req-http-stream",
-            "requestType":"clarify",
-            "model":"openai/test",
-            "messages":[{"role":"user","content":"stream"}],
-            "stream":true
-        }))
-        .send()
-        .await
-        .expect("stream reject");
-    assert_eq!(rejected.status(), reqwest::StatusCode::BAD_REQUEST);
-    assert_eq!(upstream.requests().await.len(), before_stream_reject);
-
-    let (mut websocket, _) = connect_async(format!(
-        "ws://{}/api/v1/agent/ws",
-        servers.backend_addr.expect("backend addr")
-    ))
-    .await
-    .expect("websocket");
-    websocket
-        .send(Message::Text(
-            json!({
-                "requestId":"req-ws",
-                "requestType":"clarify",
-                "model":"openai/test",
-                "messages":[{"role":"user","content":"stream"}],
-                "stream":true
-            })
-            .to_string()
-            .into(),
-        ))
-        .await
-        .expect("send");
-    let started = websocket_json(&mut websocket).await;
-    let delta = websocket_json(&mut websocket).await;
-    let done = websocket_json(&mut websocket).await;
-    assert_eq!(started["event"], "started");
-    assert_eq!(started["requestId"], "req-ws");
-    assert_eq!(started["payload"]["stream"], true);
-    assert_eq!(delta["event"], "delta");
-    assert_eq!(delta["content"], "mock delta");
-    assert_eq!(done["event"], "done");
-    assert_eq!(done["payload"]["ok"], true);
-    websocket.close(None).await.expect("close");
 
     servers.shutdown().await.expect("shutdown");
     upstream.shutdown().await;
@@ -255,4 +170,3 @@ main
     servers.shutdown().await.expect("shutdown");
     upstream.shutdown().await;
 }
-

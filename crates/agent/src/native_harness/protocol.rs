@@ -40,6 +40,9 @@ pub(crate) fn apply_harness_turns(
         .get_mut(field)
         .and_then(Value::as_array_mut)
         .ok_or_else(|| AgentError::new("provider body has no message list"))?;
+    // The request already contains the current user message. Prior durable
+    // turns must precede it, otherwise a continuation is ordered incorrectly.
+    let current = messages.pop();
     for turn in turns {
         if let Some(message) = &turn.message {
             let value = match protocol {
@@ -107,6 +110,9 @@ pub(crate) fn apply_harness_turns(
                 PiMessages => unreachable!(),
             }
         }
+    }
+    if let Some(current) = current {
+        messages.push(current);
     }
     if let Some(provider) = body.get_mut("provider") {
         *provider = json!({"allow_fallbacks":false});

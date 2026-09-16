@@ -273,6 +273,28 @@ pub(crate) fn validate_view_source(
     file: &SourceFile,
     environment: &EnvironmentConfig,
 ) -> DoweResult<ViewNode> {
+    #[cfg(test)]
+    {
+        let root = root.to_path_buf();
+        let file = file.clone();
+        let environment = environment.clone();
+        return std::thread::Builder::new()
+            .name("dowe-view-validation".to_string())
+            .stack_size(256 * 1024 * 1024)
+            .spawn(move || validate_view_source_impl(&root, &file, &environment))
+            .expect("spawn view validation")
+            .join()
+            .expect("view validation thread");
+    }
+    #[cfg(not(test))]
+    validate_view_source_impl(root, file, environment)
+}
+
+fn validate_view_source_impl(
+    root: &Path,
+    file: &SourceFile,
+    environment: &EnvironmentConfig,
+) -> DoweResult<ViewNode> {
     let types = TypeRegistry::parse_file(root, file)?;
     let stores = view_store_imports(root, file)?;
     let root_node = single_export(file)?;
@@ -298,12 +320,13 @@ pub(crate) fn validate_view_source(
         previous: None,
     };
     let root_node = context.expand_export_node(root_node, &imports)?;
-    match root_node.name.as_str() {
+    let result = match root_node.name.as_str() {
         "layout" => export_tree_with_stores(&root_node, true, environment, &types, &stores),
         "page" => export_tree_with_stores(&root_node, false, environment, &types, &stores),
         _ => Err(node_error(
             &root_node,
             "view modules must export a layout or page",
         )),
-    }
+    };
+    result
 }

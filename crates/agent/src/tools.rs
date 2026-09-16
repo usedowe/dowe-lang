@@ -41,9 +41,10 @@ pub fn agent_tool_definitions(request_type: AgentRequestType) -> Vec<AgentToolDe
                     "properties": {
                         "path": { "type": "string" },
                         "content": { "type": "string" },
+                        "skill": { "type": "string" },
                         "reason": { "type": "string" }
                     },
-                    "required": ["path", "content", "reason"]
+                    "required": ["path", "content", "skill", "reason"]
                 }),
             ),
             function_tool(
@@ -72,6 +73,35 @@ pub fn agent_tool_definitions(request_type: AgentRequestType) -> Vec<AgentToolDe
             ),
         ],
     }
+}
+
+pub fn read_only_agent_tool_definitions() -> Vec<AgentToolDefinition> {
+    agent_tool_definitions(AgentRequestType::Implementation)
+        .into_iter()
+        .filter(|tool| {
+            matches!(
+                tool.function.name.as_str(),
+                "convert_svg" | "read_file" | "explain_codegraph_node"
+            )
+        })
+        .collect()
+}
+
+/// Shape-only compatibility declarations for older conversation clients.
+/// The clean read runner rejects these calls; they never grant execution.
+pub fn conversation_compatibility_tool_definitions() -> Vec<AgentToolDefinition> {
+    vec![
+        function_tool(
+            "shell",
+            "Compatibility declaration only; ASK cannot execute shell commands.",
+            json!({"type":"object","properties":{"command":{"type":"string"},"cwd":{"type":"string"},"reason":{"type":"string"}},"required":["command","cwd","reason"]}),
+        ),
+        function_tool(
+            "propose_instruction_update",
+            "Compatibility declaration only; ASK cannot mutate project instructions.",
+            json!({"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"},"reason":{"type":"string"}},"required":["path","content","reason"]}),
+        ),
+    ]
 }
 
 fn function_tool(name: &str, description: &str, parameters: Value) -> AgentToolDefinition {

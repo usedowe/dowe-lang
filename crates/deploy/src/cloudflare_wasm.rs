@@ -160,7 +160,6 @@ fn endpoint_plan(
         | EndpointBehavior::HttpReverseProxy(_)
         | EndpointBehavior::HttpBytes(_)
         | EndpointBehavior::HttpActionJson(_)
-        | EndpointBehavior::AgentResponse(_)
         | EndpointBehavior::StoreInsertJson(_)
         | EndpointBehavior::StoreQueryJson(_)
         | EndpointBehavior::StoreTransactionJson(_)

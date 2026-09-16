@@ -128,6 +128,42 @@ pub(crate) fn compile_project(
     module_cache: Option<&mut crate::parser::ViewModuleCache>,
     previous_project: Option<&CompiledProject>,
 ) -> DoweResult<CompiledProject> {
+    let root = root.as_ref().to_path_buf();
+    std::thread::scope(|scope| {
+        let handle = std::thread::Builder::new()
+            .name("dowe-compiler".into())
+            .stack_size(64 * 1024 * 1024)
+            .spawn_scoped(scope, || {
+                compile_project_impl(
+                    root,
+                    environment,
+                    include_seeders,
+                    compile_server,
+                    compile_views,
+                    compile_apps,
+                    selected_platforms,
+                    module_cache,
+                    previous_project,
+                )
+            })
+            .map_err(|error| DoweError::new(format!("failed to start Dowe compiler: {error}")))?;
+        handle
+            .join()
+            .map_err(|_| DoweError::new("Dowe compiler thread panicked"))?
+    })
+}
+
+fn compile_project_impl(
+    root: impl AsRef<Path>,
+    environment: CompileEnvironment,
+    include_seeders: bool,
+    compile_server: bool,
+    compile_views: bool,
+    compile_apps: bool,
+    selected_platforms: Option<BTreeSet<ViewPlatform>>,
+    module_cache: Option<&mut crate::parser::ViewModuleCache>,
+    previous_project: Option<&CompiledProject>,
+) -> DoweResult<CompiledProject> {
     let root = normalize_root(root.as_ref())?;
     let previous_views = module_cache
         .as_ref()
@@ -364,4 +400,3 @@ pub(crate) fn complete_dev_app_outputs(
     icon_artifacts::sync_project_icons(&project.root, &icon_targets, Some(selected_platforms))?;
     Ok(())
 }
-

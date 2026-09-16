@@ -145,26 +145,15 @@ pub fn infer_request_type(prompt: &str, has_image: bool) -> AgentRequestType {
     if has_image {
         return AgentRequestType::VisionUi;
     }
-    let lower = prompt.to_ascii_lowercase();
-    if contains_any(
-        &lower,
-        &[
-            "implementa",
-            "implementar",
-            "implement",
-            "fix",
-            "corrige",
-            "arregla",
-        ],
-    ) {
-        return AgentRequestType::Implementation;
+    use dowe_agent_harness::coordinator::Intent;
+    match crate::intent::route_intent(prompt, None).intent {
+        Intent::Ask => AgentRequestType::Conversation,
+        Intent::Plan => AgentRequestType::SpecPlan,
+        Intent::Build if is_under_specified(prompt) && is_ui_request(prompt) => {
+            AgentRequestType::Clarify
+        }
+        Intent::Build => AgentRequestType::Implementation,
     }
-    if is_under_specified(prompt)
-        || (is_ui_request(prompt) && prompt.split_whitespace().count() < 10)
-    {
-        return AgentRequestType::Clarify;
-    }
-    AgentRequestType::SpecPlan
 }
 
 pub fn infer_language(prompt: &str) -> String {
@@ -201,10 +190,6 @@ pub fn infer_language(prompt: &str) -> String {
         return "es".to_string();
     }
     "en".to_string()
-}
-
-pub fn default_llm_server_url() -> &'static str {
-    "http://127.0.0.1:8787"
 }
 
 fn is_under_specified(prompt: &str) -> bool {

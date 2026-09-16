@@ -11,30 +11,29 @@ use std::fs;
 use tempfile::TempDir;
 
 #[test]
-fn agent_conversation_uses_the_shared_contract_without_changing_inference() {
+fn native_request_uses_shared_intent_routing() {
     let root = TempDir::new().unwrap();
-    let mut conversation = super::AgentConversation::default();
-    let first = conversation
-        .prepare(root.path(), "hola", AgentPrepareOptions::default())
+    let first = prepare_agent_request(root.path(), "hola", AgentPrepareOptions::default())
         .unwrap()
         .request;
     assert_eq!(first.request_type, AgentRequestType::Conversation);
     let payload = serde_json::json!({"output_text":"¡Hola!"});
     assert_eq!(super::agent_response_text(&payload).unwrap(), "¡Hola!");
-    let response = super::AgentServerResponse {
-        request_id: first.request_id.clone(),
-        request_type: first.request_type,
-        model: first.model.clone(),
-        payload,
-    };
-    conversation.record_response(&first, &response).unwrap();
-    let next = conversation
-        .prepare(root.path(), "seguimos", AgentPrepareOptions::default())
-        .unwrap()
-        .request;
-    assert_eq!(next.messages.len(), 4);
-    let structured =
+    let standalone =
         prepare_agent_request(root.path(), "hola", AgentPrepareOptions::default()).unwrap();
+    assert_eq!(
+        standalone.request.request_type,
+        AgentRequestType::Conversation
+    );
+    let structured = prepare_agent_request(
+        root.path(),
+        "hola",
+        AgentPrepareOptions {
+            request_type: Some(AgentRequestType::Clarify),
+            ..Default::default()
+        },
+    )
+    .unwrap();
     assert_eq!(structured.request.request_type, AgentRequestType::Clarify);
 }
 
@@ -92,7 +91,7 @@ fn serializes_codegraph_for_ipc() {
     fs::create_dir_all(temp.path().join("src/routes")).expect("src");
     fs::write(
         temp.path().join("src/routes/view.dowe"),
-        "views viewRoutes\n",
+        "views viewRoutes\n  page Home\n",
     )
     .expect("src");
 
@@ -100,6 +99,7 @@ fn serializes_codegraph_for_ipc() {
     let encoded = serde_json::to_string(&graph).expect("graph");
 
     assert!(encoded.contains("routes/view.dowe"));
+    assert!(encoded.contains("dowe:page:src/routes/view.dowe:Home"));
 }
 
 #[test]

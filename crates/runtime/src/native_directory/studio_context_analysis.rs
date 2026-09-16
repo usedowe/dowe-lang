@@ -85,40 +85,36 @@ pub(super) async fn studio_compile_diagnostics(root: PathBuf) -> Vec<Value> {
 pub(super) async fn studio_codegraph_summary(root: PathBuf) -> Value {
     match run_studio_blocking({
         let root = root.clone();
-        move || build_codegraph(root, BuildOptions::default())
+        move || dowe_codegraph::clean::build_clean_graph(&root, Default::default())
     })
     .await
     {
         Ok(Ok(graph)) => {
             let nodes = graph
-                .nodes
-                .iter()
+                .nodes()
                 .filter_map(|node| {
                     let path = node
                         .path
                         .as_deref()
                         .and_then(|path| safe_studio_metadata_path(path, &root));
-                    let owner = node
-                        .owner
-                        .as_deref()
-                        .and_then(|owner| safe_studio_metadata_path(owner, &root))
-                        .unwrap_or_default();
-                    (path.is_some() || !owner.is_empty()).then(|| {
+                    path.map(|path| {
                         json!({
-                            "kind": format!("{:?}", node.kind).to_ascii_lowercase(),
-                            "path": path.unwrap_or_default(),
+                            "kind": node.kind,
+                            "namespace": node.namespace,
+                            "evidence": node.evidence,
+                            "path": path,
                             "name": node.name,
-                            "owner": owner,
-                            "totalLines": node.metrics.as_ref().map_or(0, |metrics| metrics.total_lines),
+                            "startLine": node.start_line,
+                            "endLine": node.end_line,
                         })
                     })
                 })
                 .take(STUDIO_CONTEXT_MAX_GRAPH_NODES)
                 .collect::<Vec<_>>();
             json!({
-                "mode": format!("{:?}", graph.mode).to_ascii_lowercase(),
-                "nodeCount": graph.nodes.len(),
-                "edgeCount": graph.edges.len(),
+                "mode": "clean",
+                "nodeCount": graph.nodes().count(),
+                "edgeCount": graph.edges().count(),
                 "relevantNodes": nodes,
             })
         }
@@ -138,5 +134,4 @@ pub(super) async fn studio_codegraph_summary(root: PathBuf) -> Value {
         }),
     }
 }
-
 

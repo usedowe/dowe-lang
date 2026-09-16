@@ -220,10 +220,6 @@ pub fn audit_dowe_project(root: &Path) -> AgentResult<Value> {
     audit_dowe_project_with_options(root, false)
 }
 
-pub(crate) fn audit_dowe_project_for_ui(root: &Path) -> AgentResult<Value> {
-    audit_dowe_project_with_options(root, true)
-}
-
 fn audit_dowe_project_with_options(root: &Path, strict_ui: bool) -> AgentResult<Value> {
     if !root.join("main.dowe").is_file() {
         return Ok(json!({
@@ -356,10 +352,3 @@ fn audit_dowe_project_with_options(root: &Path, strict_ui: bool) -> AgentResult<
         "reason": reason,
     }))
 }
-
-pub(crate) fn quality_failed(report: &Value) -> bool {
-    report["status"] == "failed"
-}
-
-#[cfg(test)]
-mod tests;

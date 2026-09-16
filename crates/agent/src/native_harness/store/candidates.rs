@@ -29,6 +29,7 @@ impl HarnessStore {
         Ok(digest(&read_bounded(&path)?))
     }
 
+    #[cfg(test)]
     pub(crate) fn propose_decisions(
         &self,
         session: &str,
@@ -43,58 +44,31 @@ impl HarnessStore {
                 "memory candidate summary does not match persisted provenance",
             ));
         }
+        let decisions = summary["decisions"].as_array().cloned().unwrap_or_default();
+        let mut ids = Vec::new();
+        for decision in decisions.iter().filter_map(Value::as_str).take(3) {
+            if decision.trim().is_empty() {
+                continue;
+            }
+            let title = decision.chars().take(60).collect::<String>();
+            let id = self.remember(&title, decision, &format!("session:{session}"), false)?;
+            ids.push(id);
+        }
+        let path = self.memory_path()?;
+        reject_symlink_ancestors(&path)?;
+        let _lock = AuthFileLock::acquire(&path.with_extension("lock"))?;
+        let mut memories = self.memories()?;
         let validity = MemoryValidity {
             catalog: Some(source.catalog),
             source_summary_hash: Some(digest(source_summary.as_bytes())),
             invalidated: None,
         };
-        let path = self.memory_path()?;
-        reject_symlink_ancestors(&path)?;
-        let _lock = AuthFileLock::acquire(&path.with_extension("lock"))?;
-        let mut memories = self.memories()?;
-        let mut pending = memories
-            .observations
-            .iter()
-            .filter(|item| !item.confirmed)
-            .count();
-        let redactor = Redactor::for_project(&self.root);
-        let mut ids = Vec::new();
-        if let Some(decisions) = summary["decisions"].as_array() {
-            for decision in decisions.iter().filter_map(Value::as_str).take(3) {
-                let content = redactor.text(decision.trim());
-                if content.is_empty()
-                    || content.len() > 2048
-                    || pending >= 128
-                    || memories.observations.len() >= 1000
-                    || memories
-                        .observations
-                        .iter()
-                        .any(|item| item.content == content)
-                {
-                    continue;
-                }
-                let id = identifier();
-                let title: String = content.chars().take(60).collect();
-                memories.observations.push(MemoryObservation {
-                    id: id.clone(),
-                    project: self.project.clone(),
-                    title,
-                    content,
-                    source: format!("session:{session}"),
-                    confirmed: false,
-                    validity: validity.clone(),
-                    created: now(),
-                    updated: now(),
-                    files: Default::default(),
-                    kind: "discovery".into(),
-                });
-                ids.push(id);
-                pending += 1;
+        for id in &ids {
+            if let Some(item) = memories.observations.iter_mut().find(|item| &item.id == id) {
+                item.validity = validity.clone();
             }
         }
-        if !ids.is_empty() {
-            write_private_json(&path, &memories)?;
-        }
+        write_private_json(&path, &memories)?;
         Ok(ids)
     }
 

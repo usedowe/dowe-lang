@@ -1,7 +1,7 @@
 use super::*;
 use dowe_agent::{NativeRequestEvent, native_harness::RedactedTextStream};
 
-impl TerminalHost<'_> {
+impl TerminalHost {
     pub(super) async fn send_provider(
         &mut self,
         request: &AgentRequest,
@@ -67,11 +67,14 @@ impl TerminalHost<'_> {
         for event in &mut self.request_events {
             event["accounted"] = json!(true);
             {
-                self.usage.record_usage(
-                    provider,
-                    &request.model,
-                    serde_json::from_value(event["usage"].clone()).ok(),
-                );
+                self.usage
+                    .lock()
+                    .map_err(|_| AgentError::new("usage ledger is poisoned"))?
+                    .record_usage(
+                        provider,
+                        &request.model,
+                        serde_json::from_value(event["usage"].clone()).ok(),
+                    );
             }
         }
         response

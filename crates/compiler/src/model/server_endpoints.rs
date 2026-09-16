@@ -26,7 +26,6 @@ pub enum EndpointBehavior {
     HttpReverseProxy(HttpReverseProxyEndpoint),
     HttpBytes(HttpBytesEndpoint),
     HttpActionJson(HttpActionJsonEndpoint),
-    AgentResponse(AgentResponseEndpoint),
     StoreInsertJson(StoreInsertEndpoint),
     StoreQueryJson(StoreQueryEndpoint),
     StoreTransactionJson(StoreTransactionEndpoint),
@@ -142,12 +141,6 @@ pub struct ResponseCookie {
 pub struct HttpActionJsonEndpoint {
     pub status: u16,
     pub value: StoreLiteral,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AgentResponseEndpoint {
-    pub upstream: String,
-    pub request: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

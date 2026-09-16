@@ -6,11 +6,13 @@ license.workspace = true
 
 [dependencies]
 base64.workspace = true
+dowe_components = { path = "../components" }
 dowe_agent_harness = { path = "../agent_harness" }
 dowe_codegraph = { path = "../codegraph" }
 dowe_compiler = { path = "../compiler" }
 dowe_stdlib = { path = "../stdlib" }
 dowe_runtime = { path = "../runtime" }
+futures-util.workspace = true
 rand_core.workspace = true
 reqwest.workspace = true
 png = "0.18.1"
@@ -18,9 +20,9 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tokio.workspace = true
+tokio-tungstenite.workspace = true
 
 [dev-dependencies]
-dowe_components = { path = "../components" }
 tempfile = "3.23.0"
 
 [lib]

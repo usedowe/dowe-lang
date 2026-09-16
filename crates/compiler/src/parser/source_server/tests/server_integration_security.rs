@@ -224,7 +224,7 @@ fn parses_declared_websocket_http_bridge() {
             Path::new("/project/main.dowe"),
             r#"main
   server port:0
-    websocket "/api/v1/agent/ws"
+    websocket "/events"
       message ws
         ws request source:"json"
         send ws json:{ event:"started" requestId:request.requestId requestType:request.requestType model:request.model payload:{ stream:request.stream } }
@@ -238,7 +238,7 @@ fn parses_declared_websocket_http_bridge() {
     let server = parse_server_source(root, &file, &environment).expect("server");
     let route = server
         .backend
-        .find_websocket("/api/v1/agent/ws")
+        .find_websocket("/events")
         .expect("websocket");
     let statements = &route.handlers.message.statements;
 
@@ -320,4 +320,3 @@ fn rejects_unknown_store_insert_fields_in_logs() {
             .contains("unknown field `created.missing`")
     );
 }
-

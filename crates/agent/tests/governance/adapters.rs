@@ -1,6 +1,6 @@
-use super::support::{attach_worker, binding, AdapterHost};
+use super::support::{AdapterHost, attach_worker, binding};
 use dowe_agent::native_harness::{
-    run_orchestrated_turn, HarnessConfig, HarnessOutcome, HarnessRole, HarnessStore, ModelSelection,
+    HarnessConfig, HarnessOutcome, HarnessRole, HarnessStore, ModelSelection, run_orchestrated_turn,
 };
 use dowe_agent_harness::{CodeGraphBinding, WorkerRole};
 use serde_json::json;

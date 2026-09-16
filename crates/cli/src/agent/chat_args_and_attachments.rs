@@ -3,8 +3,6 @@ fn parse_agent_args(
     require_prompt: bool,
 ) -> Result<ParsedAgentChatArgs, Box<dyn std::error::Error>> {
     let mut options = AgentPrepareOptions::default();
-    let mut server_url = default_llm_server_url().to_string();
-    let mut uses_legacy_server = false;
     let mut json_output = false;
     let mut api_key = None;
     let mut provider = None;
@@ -42,11 +40,6 @@ fn parse_agent_args(
                 api_key = Some(required_value(args, index, "--api-key")?.to_string());
                 index += 2;
             }
-            "--server" => {
-                server_url = required_value(args, index, "--server")?.to_string();
-                uses_legacy_server = true;
-                index += 2;
-            }
             "--json" => {
                 json_output = true;
                 index += 1;
@@ -71,7 +64,7 @@ fn parse_agent_args(
     }
 
     options.provider = provider.clone();
-    if !uses_legacy_server && options.request_type.is_none() {
+    if options.request_type.is_none() {
         options.request_type = Some(AgentRequestType::Conversation);
     }
     let explicit_model = options.model.is_some();
@@ -80,8 +73,6 @@ fn parse_agent_args(
         prompt,
         provider,
         api_key,
-        server_url,
-        uses_legacy_server,
         json_output,
         options,
     })
@@ -271,4 +262,3 @@ fn required_value<'a>(
         .filter(|value| !value.starts_with("--"))
         .ok_or_else(|| format!("{name} requires a value").into())
 }
-

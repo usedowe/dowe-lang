@@ -1,6 +1,10 @@
 #[test]
 fn rejects_grid_spans_outside_direct_grid_children() {
-    let tree = container_component_node(
+    std::thread::Builder::new()
+        .name("grid-validation-test".into())
+        .stack_size(32 * 1024 * 1024)
+        .spawn(|| {
+            let tree = container_component_node(
         BuiltinComponent::Box,
         Vec::new(),
         vec![
@@ -13,9 +17,12 @@ fn rejects_grid_spans_outside_direct_grid_children() {
             .expect("box"),
         ],
         false,
-    )
-    .expect("tree");
+            )
+            .expect("tree");
 
-    assert!(validate_view_tree(&tree).is_err());
+            assert!(validate_view_tree(&tree).is_err());
+        })
+        .expect("spawn grid validation test")
+        .join()
+        .expect("grid validation test");
 }
-

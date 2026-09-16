@@ -188,20 +188,3 @@ mod agent_chat_tests {
         assert_eq!(error.status, StatusCode::PAYLOAD_TOO_LARGE);
     }
 }
-
-fn openrouter_error(payload: Value) -> Value {
-    let mut error = Map::new();
-    error.insert(
-        "code".to_string(),
-        Value::String("openrouter_error".to_string()),
-    );
-    error.insert(
-        "message".to_string(),
-        Value::String("OpenRouter returned an error.".to_string()),
-    );
-    error.insert("upstream".to_string(), payload);
-    let mut output = Map::new();
-    output.insert("ok".to_string(), Value::Bool(false));
-    output.insert("error".to_string(), Value::Object(error));
-    Value::Object(output)
-}

@@ -85,10 +85,6 @@ impl HarnessTools {
         self.permission_mode = permission_mode;
     }
 
-    pub(crate) fn permission_mode(&self) -> HarnessPermissionMode {
-        self.permission_mode
-    }
-
     pub fn set_required_skills<I>(&mut self, skills: I) -> AgentResult<()>
     where
         I: IntoIterator<Item = String>,
@@ -201,6 +197,11 @@ impl HarnessTools {
                 return Err(AgentError::new("full-access write label exceeds limits"));
             }
             return Ok(skill.into());
+        }
+        // Stable bootstrap label used to create main.dowe before the project
+        // has a local skill registry.
+        if skill == "core" {
+            return Ok("core".into());
         }
         if skill_unit(skill).is_ok() {
             return self.enforce_required_skill(skill);

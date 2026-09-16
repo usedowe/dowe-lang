@@ -18,9 +18,46 @@ fn symbols_for_nodes(nodes: &[SourceNode]) -> Vec<LanguageDocumentSymbol> {
         .flat_map(|node| {
             symbol_for_node(node)
                 .map(|symbol| vec![symbol])
-                .unwrap_or_else(|| symbols_for_nodes(&node.children))
+                .unwrap_or_else(|| {
+                    is_symbol_transparent_view_node(&node.name)
+                        .then(|| symbols_for_nodes(&node.children))
+                        .unwrap_or_default()
+                })
         })
         .collect()
+}
+
+fn is_symbol_transparent_view_node(name: &str) -> bool {
+    matches!(
+        name,
+        "Box"
+            | "Section"
+            | "Flex"
+            | "Grid"
+            | "Card"
+            | "if"
+            | "else"
+            | "each"
+            | "children"
+            | "Splash"
+            | "Tabs"
+            | "tab"
+            | "Stepper"
+            | "step"
+            | "Accordion"
+            | "Carousel"
+            | "Drawer"
+            | "Modal"
+            | "Dropdown"
+            | "Sidebar"
+            | "Scaffold"
+            | "AppBar"
+            | "Footer"
+            | "BottomBar"
+            | "NavMenu"
+            | "SideNav"
+            | "RailNav"
+    )
 }
 
 fn symbol_for_node(node: &SourceNode) -> Option<LanguageDocumentSymbol> {

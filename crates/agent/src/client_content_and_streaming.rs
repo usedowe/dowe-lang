@@ -149,7 +149,7 @@ fn parse_stream_payload(protocol: AgentProviderProtocol, body: &str) -> AgentRes
     let events = parse_sse_events(body)?;
     if events
         .iter()
-        .any(|(name, payload)| crate::conversation::response_failed(name.as_deref(), payload))
+        .any(|(name, payload)| crate::response::response_failed(name.as_deref(), payload))
     {
         return Err(AgentError::new(
             "the provider returned an unsuccessful stream",
@@ -199,4 +199,3 @@ fn parse_sse_events(body: &str) -> AgentResult<Vec<(Option<String>, Value)>> {
     }
     Ok(events)
 }
-
