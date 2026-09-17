@@ -1,6 +1,0 @@
-import MarketingLayout from "@/views/layouts/marketing-layout"
-import MarketingPage from "@/views/pages/marketing-page"
-
-views marketingRoutes
-  group path:"/" layout:MarketingLayout
-    route path:"" page:MarketingPage

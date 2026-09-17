@@ -1,6 +1,0 @@
-import AppLayout from "@/views/layouts/app-layout"
-import BlogsPage from "@/views/pages/blogs-page"
-
-views viewRoutes
-  group path:"/" layout:AppLayout
-    route path:"" page:BlogsPage

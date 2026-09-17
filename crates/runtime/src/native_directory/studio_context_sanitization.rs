@@ -23,18 +23,6 @@ pub(super) fn sanitize_studio_text(value: &str, root: &Path) -> String {
         .replace(&root.replace('/', "\\"), "<workspace>")
 }
 
-pub(super) fn safe_studio_metadata_path(value: &str, root: &Path) -> Option<String> {
-    let path = Path::new(value);
-    let relative = if path.is_absolute() {
-        path.strip_prefix(root).ok()?.to_path_buf()
-    } else {
-        path.to_path_buf()
-    };
-    let relative = relative.to_string_lossy().replace('\\', "/");
-    validate_project_relative_path(&relative).ok()?;
-    visible_studio_path(&relative).then_some(relative)
-}
-
 pub(super) fn visible_studio_path(path: &str) -> bool {
     let path = Path::new(path);
     !path.components().any(|component| {
@@ -58,4 +46,3 @@ pub(super) fn studio_workspace_id(root: &Path) -> String {
 pub(super) fn hex_digest(digest: &[u8]) -> String {
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
-

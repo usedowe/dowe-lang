@@ -1,1 +1,0 @@
-store session persistent:true value:{ authorization:"" user:{ id:"" name:"" } }

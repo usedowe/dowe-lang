@@ -115,14 +115,12 @@ pub(crate) fn dev_target_default_states(
         .collect()
 }
 
-pub(crate) fn root_commands() -> [&'static str; 18] {
+pub(crate) fn root_commands() -> [&'static str; 16] {
     [
         "dev",
-        "agent",
         "ai",
         "build",
         "cache",
-        "codegraph",
         "d1",
         "database",
         "deploy",
@@ -136,14 +134,6 @@ pub(crate) fn root_commands() -> [&'static str; 18] {
         "vector",
         "version",
     ]
-}
-
-pub(crate) fn harness_commands() -> [&'static str; 3] {
-    ["init", "check", "status"]
-}
-
-pub(crate) fn codegraph_commands() -> [&'static str; 4] {
-    ["build", "check", "report", "baseline"]
 }
 
 pub(crate) fn database_commands() -> [&'static str; 11] {
@@ -161,4 +151,3 @@ pub(crate) fn database_commands() -> [&'static str; 11] {
         "seeders",
     ]
 }
-

@@ -1,10 +1,7 @@
 [workspace]
 members = [
-  "crates/agent",
-  "crates/agent_harness",
   "crates/ai",
   "crates/cli",
-  "crates/codegraph",
   "crates/components",
   "crates/compiler",
   "crates/crypto",

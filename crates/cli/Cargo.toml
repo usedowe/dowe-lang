@@ -13,9 +13,6 @@ dowe_ai = { path = "../ai" }
 dialoguer = "0.12.0"
 crossterm = "0.29.0"
 pulldown-cmark = { version = "0.13", default-features = false }
-dowe_agent = { path = "../agent" }
-dowe_agent_harness = { path = "../agent_harness" }
-dowe_codegraph = { path = "../codegraph" }
 dowe_compiler = { path = "../compiler" }
 dowe_deploy = { path = "../deploy" }
 dowe_icons = { path = "../icons" }
@@ -27,5 +24,6 @@ dowe_runtime = { path = "../runtime" }
 dowe_spawn = { path = "../spawn" }
 reqwest.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 tokio.workspace = true
 tempfile = "3.23.0"

@@ -1,8 +1,6 @@
-mod agent;
 mod ai;
 mod build;
 mod cache_cli;
-mod codegraph;
 mod d1_cli;
 mod database_cli;
 mod deploy;
@@ -71,9 +69,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some("test") => test_cli::run_test_command(&args[1..]),
         Some("build") => build::run_build_command(&args[1..]).await,
         Some("deploy") => deploy::run_deploy_command(&args[1..]),
-        Some("agent") => agent::run_agent_command(&args[1..]).await,
         Some("ai") => ai::run_ai_command(&args[1..]).await,
-        Some("codegraph") => codegraph::run_codegraph_command(&args[1..]).await,
         Some("d1") => d1_cli::run_d1_command(&args[1..]),
         Some("cache") => cache_cli::run_cache_command(&args[1..]).await,
         Some("queue") => queue_cli::run_queue_command(&args[1..]).await,
@@ -108,9 +104,7 @@ async fn run_root_menu() -> Result<(), Box<dyn std::error::Error>> {
         "test" => test_cli::run_test_command(&[]),
         "build" => build::run_build_command(&[]).await,
         "deploy" => deploy::run_deploy_command(&[]),
-        "agent" => agent::run_agent_command(&[]).await,
         "ai" => ai::run_ai_command(&[]).await,
-        "codegraph" => codegraph::run_codegraph_command(&[]).await,
         "d1" => d1_cli::run_d1_command(&[]),
         "cache" => cache_cli::run_cache_command(&[]).await,
         "queue" => queue_cli::run_queue_command(&[]).await,

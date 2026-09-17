@@ -159,7 +159,7 @@ pub(super) async fn prepare_studio_context(args: &Value) -> RuntimeResult<Value>
 
     let source_fingerprint = hex_digest(&source_fingerprint.finalize());
     let workspace_fingerprint = full_studio_source_fingerprint(&root).await?;
-    let (diagnostics, codegraph) = cached_studio_analysis(&root, &workspace_fingerprint).await;
+    let diagnostics = cached_studio_analysis(&root, &workspace_fingerprint).await;
     let mode = if entries.contains_key("main.dowe") {
         "dowe"
     } else {
@@ -182,8 +182,6 @@ pub(super) async fn prepare_studio_context(args: &Value) -> RuntimeResult<Value>
         "imports": imports.into_iter().collect::<Vec<_>>(),
         "declarations": declarations.into_iter().collect::<Vec<_>>(),
         "diagnostics": diagnostics,
-        "codegraph": codegraph,
         "truncated": truncated,
     }))
 }
-

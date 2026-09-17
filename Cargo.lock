@@ -1478,11 +1478,8 @@ version = "1.0.25"
 dependencies = [
  "crossterm",
  "dialoguer",
- "dowe_agent",
- "dowe_agent_harness",
  "dowe_ai",
  "dowe_cache",
- "dowe_codegraph",
  "dowe_compiler",
  "dowe_database",
  "dowe_deploy",
@@ -1494,42 +1491,9 @@ dependencies = [
  "pulldown-cmark",
  "reqwest",
  "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "dowe_agent"
-version = "1.0.25"
-dependencies = [
- "base64 0.23.1",
- "dowe_agent_harness",
- "dowe_codegraph",
- "dowe_compiler",
- "dowe_components",
- "dowe_runtime",
- "dowe_stdlib",
- "futures-util",
- "png 0.18.1",
- "rand_core 0.6.4",
- "reqwest",
- "serde",
- "serde_json",
  "sha2 0.11.0",
  "tempfile",
  "tokio",
- "tokio-tungstenite 0.30.0",
-]
-
-[[package]]
-name = "dowe_agent_harness"
-version = "1.0.25"
-dependencies = [
- "dowe_codegraph",
- "serde",
- "serde_json",
- "sha2 0.11.0",
- "tempfile",
 ]
 
 [[package]]
@@ -1559,16 +1523,6 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-tungstenite 0.30.0",
-]
-
-[[package]]
-name = "dowe_codegraph"
-version = "1.0.25"
-dependencies = [
- "dowe_compiler",
- "serde",
- "serde_json",
- "tempfile",
 ]
 
 [[package]]
@@ -1723,9 +1677,6 @@ dependencies = [
 name = "dowe_ipc"
 version = "1.0.25"
 dependencies = [
- "dowe_agent",
- "dowe_agent_harness",
- "dowe_codegraph",
  "dowe_compiler",
  "dowe_deploy",
  "dowe_icons",
@@ -1785,7 +1736,6 @@ dependencies = [
  "bytes",
  "dowe_ai",
  "dowe_cache",
- "dowe_codegraph",
  "dowe_compiler",
  "dowe_components",
  "dowe_crypto",

@@ -5,7 +5,9 @@ mod documentation;
 mod formatting;
 mod model;
 mod navigation;
+mod source_regions;
 mod symbols;
+pub use source_regions::{SourceRegion, document_source_regions};
 
 pub use analysis::{analyze_document, find_workspace_root};
 pub use code_actions::code_actions_at;

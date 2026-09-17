@@ -19,7 +19,6 @@ dowe_components = { path = "../components" }
 dowe_compiler = { path = "../compiler" }
 dowe_crypto = { path = "../crypto" }
 dowe_cache = { path = "../cache" }
-dowe_codegraph = { path = "../codegraph" }
 dowe_queue = { path = "../queue" }
 dowe_notifications = { path = "../notifications" }
 dowe_inference = { path = "../inference" }

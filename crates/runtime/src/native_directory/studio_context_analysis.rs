@@ -12,7 +12,7 @@ pub(super) fn truncate_studio_text(value: &str, max_bytes: usize) -> String {
 pub(super) async fn cached_studio_analysis(
     root: &Path,
     workspace_fingerprint: &str,
-) -> (Vec<Value>, Value) {
+) -> Vec<Value> {
     let cache_path = root
         .join(".dowe")
         .join("studio-context-cache")
@@ -23,23 +23,14 @@ pub(super) async fn cached_studio_analysis(
     if let Ok(bytes) = tokio::fs::read(&cache_path).await
         && let Ok(value) = serde_json::from_slice::<Value>(&bytes)
         && value.get("compilerVersion").and_then(Value::as_str) == Some(env!("CARGO_PKG_VERSION"))
-        && let (Some(diagnostics), Some(codegraph)) = (
-            value.get("diagnostics").and_then(Value::as_array),
-            value.get("codegraph"),
-        )
+        && let Some(diagnostics) = value.get("diagnostics").and_then(Value::as_array)
     {
-        return (diagnostics.clone(), codegraph.clone());
+        return diagnostics.clone();
     }
-    let diagnostic_root = root.to_path_buf();
-    let graph_root = root.to_path_buf();
-    let (diagnostics, codegraph) = tokio::join!(
-        studio_compile_diagnostics(diagnostic_root),
-        studio_codegraph_summary(graph_root),
-    );
+    let diagnostics = studio_compile_diagnostics(root.to_path_buf()).await;
     let cached = json!({
         "compilerVersion": env!("CARGO_PKG_VERSION"),
         "diagnostics": diagnostics,
-        "codegraph": codegraph,
     });
     let private_directory_safe = tokio::fs::symlink_metadata(root.join(".dowe"))
         .await
@@ -50,17 +41,11 @@ pub(super) async fn cached_studio_analysis(
             let _ = write_studio_metadata_atomic(&cache_path, &bytes).await;
         }
     }
-    (
-        cached
-            .get("diagnostics")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default(),
-        cached
-            .get("codegraph")
-            .cloned()
-            .unwrap_or_else(|| json!({})),
-    )
+    cached
+        .get("diagnostics")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
 }
 
 pub(super) async fn studio_compile_diagnostics(root: PathBuf) -> Vec<Value> {
@@ -81,57 +66,3 @@ pub(super) async fn studio_compile_diagnostics(root: PathBuf) -> Vec<Value> {
         })],
     }
 }
-
-pub(super) async fn studio_codegraph_summary(root: PathBuf) -> Value {
-    match run_studio_blocking({
-        let root = root.clone();
-        move || dowe_codegraph::clean::build_clean_graph(&root, Default::default())
-    })
-    .await
-    {
-        Ok(Ok(graph)) => {
-            let nodes = graph
-                .nodes()
-                .filter_map(|node| {
-                    let path = node
-                        .path
-                        .as_deref()
-                        .and_then(|path| safe_studio_metadata_path(path, &root));
-                    path.map(|path| {
-                        json!({
-                            "kind": node.kind,
-                            "namespace": node.namespace,
-                            "evidence": node.evidence,
-                            "path": path,
-                            "name": node.name,
-                            "startLine": node.start_line,
-                            "endLine": node.end_line,
-                        })
-                    })
-                })
-                .take(STUDIO_CONTEXT_MAX_GRAPH_NODES)
-                .collect::<Vec<_>>();
-            json!({
-                "mode": "clean",
-                "nodeCount": graph.nodes().count(),
-                "edgeCount": graph.edges().count(),
-                "relevantNodes": nodes,
-            })
-        }
-        Ok(Err(error)) => json!({
-            "mode": "unknown",
-            "nodeCount": 0,
-            "edgeCount": 0,
-            "relevantNodes": [],
-            "error": sanitize_studio_text(&error.to_string(), &root),
-        }),
-        Err(error) => json!({
-            "mode": "unknown",
-            "nodeCount": 0,
-            "edgeCount": 0,
-            "relevantNodes": [],
-            "error": sanitize_studio_text(&error, &root),
-        }),
-    }
-}
-

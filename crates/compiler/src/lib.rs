@@ -23,9 +23,9 @@ pub use error::{DoweError, DoweResult};
 pub use language::{
     LanguageCodeAction, LanguageCompletion, LanguageCompletionKind, LanguageDiagnostic,
     LanguageDiagnosticSeverity, LanguageDocument, LanguageDocumentSymbol, LanguageLocation,
-    LanguagePosition, LanguageRange, LanguageSymbolKind, LanguageTextEdit, analyze_document,
-    code_actions_at, complete_document, definition_at, document_symbols, find_workspace_root,
-    format_document, hover_at,
+    LanguagePosition, LanguageRange, LanguageSymbolKind, LanguageTextEdit, SourceRegion,
+    analyze_document, code_actions_at, complete_document, definition_at, document_source_regions,
+    document_symbols, find_workspace_root, format_document, hover_at,
 };
 pub use model::{
     AgentChatTransform, AiChatStatement, AppOutput, CacheConnection, CacheConnectionValue,

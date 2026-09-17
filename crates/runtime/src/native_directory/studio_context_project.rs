@@ -34,7 +34,6 @@ pub(super) const STUDIO_CONTEXT_MAX_QUERY_BYTES: usize = 4096;
 pub(super) const STUDIO_CONTEXT_MAX_IMAGE_BYTES: usize = 512 * 1024;
 pub(super) const STUDIO_CONTEXT_MAX_IMPORTS: usize = 64;
 pub(super) const STUDIO_CONTEXT_MAX_DECLARATIONS: usize = 128;
-pub(super) const STUDIO_CONTEXT_MAX_GRAPH_NODES: usize = 24;
 pub(super) const STUDIO_CONTEXT_MAX_DIRECTORIES: usize = 4096;
 pub(super) const STUDIO_CONTEXT_MAX_SOURCE_FILES: usize = 4096;
 pub(super) const STUDIO_STAGE_MAX_FILES: usize = 24;
@@ -71,4 +70,3 @@ pub(super) async fn full_studio_source_fingerprint(root: &Path) -> RuntimeResult
     }
     Ok(hex_digest(&digest.finalize()))
 }
-

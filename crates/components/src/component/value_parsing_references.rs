@@ -1,3 +1,11 @@
+/// Authoring values are derived from the same parser used by the compiler.
+pub fn component_scheme_values(component: BuiltinComponent) -> Vec<&'static str> {
+    ["primary", "secondary", "accent", "muted", "success", "info", "warning", "danger", "background", "surface"]
+        .into_iter()
+        .filter(|value| parse_family_prop(component, "scheme", &PropValue::String((*value).into())).is_ok())
+        .collect()
+}
+
 fn parse_family_prop(
     component: BuiltinComponent,
     name: &str,
@@ -170,5 +178,4 @@ fn is_reference_part(value: &str) -> bool {
     (first.is_ascii_alphabetic() || first == '_')
         && chars.all(|value| value.is_ascii_alphanumeric() || value == '_')
 }
-
 

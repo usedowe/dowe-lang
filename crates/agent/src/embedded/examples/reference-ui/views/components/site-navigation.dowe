@@ -1,7 +1,0 @@
-component SiteNavigation
-  SideNav variant:"ghost" scheme:"primary" size:"sm" wide:true
-    item label:"Overview" href:"/"
-    item label:"Product" href:"/#product"
-    item label:"Services" href:"/#services"
-    item label:"Workflow" href:"/#workflow"
-    item label:"Contact" href:"/#contact"

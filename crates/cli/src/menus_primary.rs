@@ -142,15 +142,6 @@ pub(crate) fn prompt_d1_migrations_output() -> Result<String, Box<dyn std::error
         .interact_text()?)
 }
 
-pub(crate) fn prompt_agent_example_query() -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let query = Input::<String>::with_theme(&ColorfulTheme::default())
-        .with_prompt("Search Dowe examples")
-        .allow_empty(false)
-        .interact_text()?;
-
-    Ok(Some(query))
-}
-
 pub(crate) fn prompt_deploy_surface(
     root: &std::path::Path,
     environment: DeployEnvironment,
@@ -276,28 +267,6 @@ pub(crate) fn prompt_ssh_key_file() -> Result<Option<std::path::PathBuf>, Box<dy
     Ok(Some(std::path::PathBuf::from(path)))
 }
 
-pub(crate) fn prompt_harness_command() -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let commands = harness_commands();
-    let selection = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Dowe agent harness")
-        .items(&commands)
-        .default(0)
-        .interact_opt()?;
-
-    Ok(selection.map(|index| commands[index].to_string()))
-}
-
-pub(crate) fn prompt_codegraph_command() -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let commands = codegraph_commands();
-    let selection = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Dowe CodeGraph")
-        .items(&commands)
-        .default(0)
-        .interact_opt()?;
-
-    Ok(selection.map(|index| commands[index].to_string()))
-}
-
 pub(crate) fn prompt_database_command() -> Result<Option<String>, Box<dyn std::error::Error>> {
     let commands = database_commands();
     let selection = Select::with_theme(&ColorfulTheme::default())
@@ -334,4 +303,3 @@ pub(crate) fn prompt_database_command_args(
     }
     Ok(Some(args))
 }
-

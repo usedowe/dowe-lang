@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
     use super::{
-        codegraph_commands, database_commands, deploy_target_default_index,
-        dev_target_default_states, harness_commands, root_commands, should_prompt_simulator_quit,
+        database_commands, deploy_target_default_index, dev_target_default_states,
+        root_commands, should_prompt_simulator_quit,
     };
     use dowe_deploy::{DeploySurface, DeployTarget, deploy_targets_for_surface};
     use dowe_runtime::{DevTarget, DevTargetSelection, HostOs};
@@ -13,11 +13,9 @@ mod tests {
             root_commands(),
             [
                 "dev",
-                "agent",
                 "ai",
                 "build",
                 "cache",
-                "codegraph",
                 "d1",
                 "database",
                 "deploy",
@@ -82,19 +80,6 @@ mod tests {
             0
         );
         assert_eq!(deploy_target_default_index(&targets, None), 0);
-    }
-
-    #[test]
-    fn harness_menu_contains_interactive_safe_commands() {
-        assert_eq!(harness_commands(), ["init", "check", "status"]);
-    }
-
-    #[test]
-    fn codegraph_menu_contains_interactive_safe_commands() {
-        assert_eq!(
-            codegraph_commands(),
-            ["build", "check", "report", "baseline"]
-        );
     }
 
     #[test]

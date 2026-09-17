@@ -1,5 +1,0 @@
-import marketingRoutes from "@/views/routes/marketing"
-
-main
-  app name:"Marketing Blocks" bundle:"com.example.marketingblocks"
-  views:marketingRoutes
